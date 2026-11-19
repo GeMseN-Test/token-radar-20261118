@@ -3,57 +3,69 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Token Launch Radar — pre-token protocols ranked by implied value</title>
+<title>Token Launch Radar — fitted launch pricing for pre-token protocols</title>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
-<header class="top">
-  <div>
-    <h1>Token Launch Radar</h1>
-    <p class="sub">Which DeFi protocol without a token would be worth the most if it launched one — and how to farm it.</p>
+<header class="mast">
+  <div class="mast-in">
+    <div>
+      <h1>Token Launch Radar</h1>
+      <p class="tag">Which pre-token protocol would be worth the most if it launched one — priced from the snapshot's own figures, tested blind, with a costed plan to farm each one.</p>
+    </div>
+    <div class="stats" id="stats">Loading snapshot…</div>
   </div>
-  <div class="meta" id="meta">Loading snapshot…</div>
 </header>
 
-<section class="model">
-  <strong>How the implied value is built:</strong>
-  <span id="model-text">implied value = TVL × peer median mcap/TVL (same category, token already trades) × growth factor (7-day TVL change) × chain factor × maturity factor (days listed with no token). The value is this entry's own claim, never make.fun's. “No token recorded” means the snapshot's DefiLlama record carries none — it is not proof the protocol has none.</span>
+<section class="card" id="modelcard">
+  <h2>How a launch is priced — and how the model was tested</h2>
+  <p id="equation">Fitting the launch curve on the snapshot's live peers…</p>
+  <table class="valid" id="valid"><thead><tr>
+    <th>Model tried</th><th>Leave-one-out error</th><th>5-fold CV error</th>
+  </tr></thead><tbody></tbody></table>
+  <p class="note" id="modelnote"></p>
 </section>
 
-<section class="filters" id="filters">
-  <input id="q" type="search" placeholder="Search name or slug…" aria-label="Search">
-  <select id="f-cat" aria-label="Category"><option value="">All categories</option></select>
-  <select id="f-chain" aria-label="Chain"><option value="">All chains</option></select>
-  <select id="f-tvl" aria-label="Minimum TVL">
-    <option value="0">Any TVL</option>
-    <option value="50000000">TVL ≥ $50M (watchlist floor)</option>
-    <option value="100000000">TVL ≥ $100M</option>
-    <option value="500000000">TVL ≥ $500M</option>
-  </select>
-  <select id="f-chg" aria-label="7-day change">
-    <option value="">Any 7-day change</option>
-    <option value="pos">Growing (7d &gt; 0%)</option>
-    <option value="neg">Shrinking (7d &lt; 0%)</option>
-    <option value="fast">Fast growth (7d &gt; +10%)</option>
-  </select>
-  <label class="check"><input id="f-watch" type="checkbox"> Watchlist only</label>
-  <select id="f-sort" aria-label="Sort">
-    <option value="implied">Sort: implied value ↓</option>
-    <option value="tvl">Sort: TVL ↓</option>
-    <option value="growth">Sort: 7-day change ↓</option>
-    <option value="name">Sort: name A–Z</option>
-  </select>
-  <button id="f-reset" type="button">Reset</button>
-</section>
+<nav class="tabs" id="tabs">
+  <button type="button" data-tab="board" class="on">Launch candidates</button>
+  <button type="button" data-tab="live">Already trading</button>
+  <button type="button" data-tab="dropped">Set aside — why</button>
+</nav>
 
-<p class="count" id="count"></p>
+<section id="tab-board">
+  <div class="toolbar" id="toolbar">
+    <input id="q" type="search" placeholder="Search name or slug…" aria-label="Search">
+    <select id="f-cat" aria-label="Category"><option value="">All categories</option></select>
+    <select id="f-chain" aria-label="Chain"><option value="">All chains</option></select>
+    <select id="f-tvl" aria-label="Minimum TVL">
+      <option value="0">Any TVL</option>
+      <option value="50000000">TVL ≥ $50M (watchlist floor)</option>
+      <option value="100000000">TVL ≥ $100M</option>
+      <option value="500000000">TVL ≥ $500M</option>
+    </select>
+    <select id="f-chg" aria-label="7-day change">
+      <option value="">Any 7-day change</option>
+      <option value="pos">Growing (7d &gt; 0%)</option>
+      <option value="neg">Shrinking (7d &lt; 0%)</option>
+      <option value="fast">Fast growth (7d &gt; +10%)</option>
+    </select>
+    <label class="check"><input id="f-watch" type="checkbox"> Watchlist only</label>
+    <select id="f-sort" aria-label="Sort">
+      <option value="implied">Sort: implied value ↓</option>
+      <option value="tvl">Sort: TVL ↓</option>
+      <option value="growth">Sort: 7-day change ↓</option>
+      <option value="name">Sort: name A–Z</option>
+    </select>
+    <button id="f-reset" type="button">Reset</button>
+  </div>
 
-<main>
+  <p class="count" id="count"></p>
+
   <table id="board">
     <thead><tr>
       <th data-k="rank">#</th><th data-k="name">Protocol</th><th data-k="category">Category</th>
       <th data-k="chains">Chains</th><th data-k="tvl">TVL</th><th data-k="chg">7d</th>
-      <th data-k="mult">Peer ×</th><th data-k="implied">Implied value</th>
+      <th data-k="mult">Curve ×</th><th data-k="implied">Implied value</th>
     </tr></thead>
     <tbody id="rows"></tbody>
   </table>
@@ -62,16 +74,25 @@
     <button id="d-close" type="button">← Back to board</button>
     <div id="d-body"></div>
   </section>
+</section>
 
-  <section class="live">
-    <h2>Already trading — set aside</h2>
-    <p>These protocols already record a token, so they are not ranked for a launch. The 60 largest by TVL are listed here so the board's split is visible.</p>
-    <ul id="live-list"></ul>
-  </section>
-</main>
+<section id="tab-live" hidden>
+  <h2>Already trading — not ranked for a launch</h2>
+  <p class="lede">These protocols already record a token, so they are not launch candidates. The 60 largest by TVL are listed here so the split is visible — and their market caps are the peers the curve is fitted on.</p>
+  <ul id="live-list" class="cols"></ul>
+</section>
+
+<section id="tab-dropped" hidden>
+  <h2>Set aside — and why</h2>
+  <p class="lede">Pre-token names the house's own watchlist rule drops: exchanges, bridges, liquid-staking and restaking products, wrapped or staked products, and version-marked names. They record no token, but the rule says they are not launch candidates, so the board does not rank them.</p>
+  <h3>Below the $50M floor (<span id="db-count"></span>)</h3>
+  <ul id="dropped-below" class="cols"></ul>
+  <h3>At or above the $50M floor (<span id="dh-count"></span>)</h3>
+  <ul id="dropped-high" class="cols"></ul>
+</section>
 
 <footer>
-  <p>Data: sealed DefiLlama snapshot (<span id="asof"></span>). Board covers the full watchlist plus the largest pre-token protocols below the $50M floor. Farm plans are concrete steps with sizes, costs and time; check the protocol's own pages before moving funds.</p>
+  <p>Data: sealed DefiLlama snapshot (<span id="asof"></span>). “No token recorded” means the snapshot's DefiLlama record carries no <span class="mono">gecko_id</span> or <span class="mono">symbol</span> — it is not proof the protocol has none. Implied values are this entry's own claim, never make.fun's. Gas figures in farm plans are typical ranges for the chain, labelled as estimates; check the protocol's own pages before moving funds.</p>
 </footer>
 
 <script src="../data.js"></script>
