@@ -3,98 +3,97 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Token Launch Radar — fitted launch pricing for pre-token protocols</title>
+<title>Token Launch Radar — 181 protocols, fitted pricing, 6-model blind test</title>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
-<header class="mast">
-  <div class="mast-in">
-    <div>
-      <h1>Token Launch Radar</h1>
-      <p class="tag">Which pre-token protocol would be worth the most if it launched one — priced from the snapshot's own figures, tested blind, with a costed plan to farm each one.</p>
-    </div>
-    <div class="stats" id="stats">Loading snapshot…</div>
+<header class="top">
+  <div>
+    <h1>Token Launch Radar</h1>
+    <p class="sub">181 pre-token protocols ranked by implied launch value — fitted pricing, blind-tested, with a costed farm plan and a verdict on every row.</p>
+    <p class="meta" id="meta"></p>
   </div>
+  <div class="badge">Snapshot <span id="asof"></span> · No network · All figures from the snapshot alone</div>
 </header>
 
-<section class="card" id="modelcard">
-  <h2>How a launch is priced — and how the model was tested</h2>
-  <p id="equation">Fitting the launch curve on the snapshot's live peers…</p>
-  <table class="valid" id="valid"><thead><tr>
-    <th>Model tried</th><th>Leave-one-out error</th><th>5-fold CV error</th>
-  </tr></thead><tbody></tbody></table>
-  <p class="note" id="modelnote"></p>
-</section>
+<section class="kpis" id="kpis" aria-label="Key numbers"></section>
 
-<nav class="tabs" id="tabs">
-  <button type="button" data-tab="board" class="on">Launch candidates</button>
-  <button type="button" data-tab="live">Already trading</button>
-  <button type="button" data-tab="dropped">Set aside — why</button>
-</nav>
+<section class="recon" id="recon" aria-label="Reconciliation"></section>
 
-<section id="tab-board">
-  <div class="toolbar" id="toolbar">
-    <input id="q" type="search" placeholder="Search name or slug…" aria-label="Search">
-    <select id="f-cat" aria-label="Category"><option value="">All categories</option></select>
-    <select id="f-chain" aria-label="Chain"><option value="">All chains</option></select>
-    <select id="f-tvl" aria-label="Minimum TVL">
-      <option value="0">Any TVL</option>
-      <option value="50000000">TVL ≥ $50M (watchlist floor)</option>
-      <option value="100000000">TVL ≥ $100M</option>
-      <option value="500000000">TVL ≥ $500M</option>
-    </select>
-    <select id="f-chg" aria-label="7-day change">
-      <option value="">Any 7-day change</option>
-      <option value="pos">Growing (7d &gt; 0%)</option>
-      <option value="neg">Shrinking (7d &lt; 0%)</option>
-      <option value="fast">Fast growth (7d &gt; +10%)</option>
-    </select>
-    <label class="check"><input id="f-watch" type="checkbox"> Watchlist only</label>
-    <select id="f-sort" aria-label="Sort">
-      <option value="implied">Sort: implied value ↓</option>
-      <option value="tvl">Sort: TVL ↓</option>
-      <option value="growth">Sort: 7-day change ↓</option>
-      <option value="name">Sort: name A–Z</option>
-    </select>
-    <button id="f-reset" type="button">Reset</button>
-  </div>
-
-  <p class="count" id="count"></p>
-
-  <table id="board">
-    <thead><tr>
-      <th data-k="rank">#</th><th data-k="name">Protocol</th><th data-k="category">Category</th>
-      <th data-k="chains">Chains</th><th data-k="tvl">TVL</th><th data-k="chg">7d</th>
-      <th data-k="mult">Curve ×</th><th data-k="implied">Implied value</th>
-    </tr></thead>
-    <tbody id="rows"></tbody>
+<section class="card" id="modelcard" aria-label="Value model">
+  <h2>How the value is priced</h2>
+  <p id="equation"></p>
+  <p class="fine" id="modelnote"></p>
+  <table class="blind" id="blind">
+    <thead><tr><th>Model</th><th>Leave-one-out error</th><th>LOO within 2×</th><th>5-fold CV error</th><th>CV within 2×</th><th></th></tr></thead>
+    <tbody></tbody>
   </table>
-
-  <section id="detail" class="detail" hidden>
-    <button id="d-close" type="button">← Back to board</button>
-    <div id="d-body"></div>
-  </section>
+  <p class="fine">Error = median absolute % error on the 128 live peers (their real market caps); "within 2×" = share of peers priced between half and twice their real cap. Lower error is better. Launch pricing is genuinely dispersed — live mcap/TVL multiples run from 0.01× to 2.97× — so no model here is precise; the kept model wins because it has the lowest error on both tests, and the v1-style category-median model is worst out of sample even though it looks better in-sample (small categories memorise their own median). A single 26-peer holdout was measured first and thrown away: it swings 70–430% between splits for every model — one split is a lottery, not a test. The ridge was tried and rejected: its fitted growth and age coefficients come out negative, pricing fast-growing, long-running protocols down — the opposite of what a launch radar should reward.</p>
 </section>
 
-<section id="tab-live" hidden>
-  <h2>Already trading — not ranked for a launch</h2>
-  <p class="lede">These protocols already record a token, so they are not launch candidates. The 60 largest by TVL are listed here so the split is visible — and their market caps are the peers the curve is fitted on.</p>
-  <ul id="live-list" class="cols"></ul>
+<section class="toolbar" aria-label="Filters">
+  <input id="q" type="search" placeholder="Search name or slug…" aria-label="Search">
+  <select id="cat" aria-label="Category"><option value="">All categories</option></select>
+  <select id="chain" aria-label="Chain"><option value="">All chains</option></select>
+  <select id="verdict" aria-label="Verdict">
+    <option value="">All verdicts</option><option>FARM</option><option>THIN</option><option>SKIP</option>
+  </select>
+  <label class="check"><input id="watch" type="checkbox"> Watchlist only</label>
+  <select id="sort" aria-label="Sort">
+    <option value="rank">Sort: rank</option><option value="tvl">Sort: TVL ↓</option>
+    <option value="growth">Sort: 7d growth ↓</option><option value="net">Sort: net value ↓</option>
+    <option value="cost">Sort: plan cost ↑</option>
+  </select>
+  <button id="compareBtn" type="button">Compare (0)</button>
+  <button id="csvBtn" type="button">Export CSV</button>
+  <button id="jsonBtn" type="button">Export JSON</button>
 </section>
 
-<section id="tab-dropped" hidden>
-  <h2>Set aside — and why</h2>
-  <p class="lede">Pre-token names the house's own watchlist rule drops: exchanges, bridges, liquid-staking and restaking products, wrapped or staked products, and version-marked names. They record no token, but the rule says they are not launch candidates, so the board does not rank them.</p>
-  <h3>Below the $50M floor (<span id="db-count"></span>)</h3>
-  <ul id="dropped-below" class="cols"></ul>
-  <h3>At or above the $50M floor (<span id="dh-count"></span>)</h3>
-  <ul id="dropped-high" class="cols"></ul>
+<nav class="tabs" aria-label="Lists">
+  <button type="button" data-tab="board" class="active">Candidates · <span id="nBoard"></span></button>
+  <button type="button" data-tab="live">Already trading · <span id="nLive"></span></button>
+  <button type="button" data-tab="setaside">Set aside · <span id="nSet"></span></button>
+</nav>
+<p class="showing" id="showing"></p>
+
+<main id="boardwrap">
+  <table class="board" id="board">
+    <thead><tr><th>#</th><th>Protocol</th><th>Implied value</th><th>TVL</th><th>7d</th><th>Verdict</th><th>Net / farmer</th><th>Plan cost</th><th></th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <table class="board hidden" id="livetab">
+    <thead><tr><th>#</th><th>Protocol</th><th>Category</th><th>TVL</th><th>Market cap</th><th>Multiple</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <table class="board hidden" id="settab">
+    <thead><tr><th>#</th><th>Protocol</th><th>TVL</th><th>Why it is not on the board</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</main>
+
+<section class="detail hidden" id="detail" aria-label="Protocol detail"></section>
+
+<section class="sandbox card" id="sandbox" aria-label="Sandbox">
+  <h2>Sandbox — what if this protocol changes?</h2>
+  <p class="fine">Pick a board protocol, move its TVL and 7-day growth, and watch the implied value move. Same curve and tilts as the board; age and spread stay as listed.</p>
+  <div class="sandrow">
+    <label>Protocol <select id="sandSlug"></select></label>
+    <label>TVL <input id="sandTvl" type="range" min="5" max="3000" step="5" value="500"> <output id="sandTvlOut"></output></label>
+    <label>7d growth <input id="sandGrowth" type="range" min="-50" max="27" step="1" value="0"> <output id="sandGrowthOut"></output></label>
+  </div>
+  <p class="sandout" id="sandOut"></p>
+</section>
+
+<section class="compare card hidden" id="compare" aria-label="Compare">
+  <h2>Compare</h2>
+  <div id="compareBody"></div>
+  <p class="fine"><button id="clearCompare" type="button">Clear comparison</button></p>
 </section>
 
 <footer>
-  <p>Data: sealed DefiLlama snapshot (<span id="asof"></span>). “No token recorded” means the snapshot's DefiLlama record carries no <span class="mono">gecko_id</span> or <span class="mono">symbol</span> — it is not proof the protocol has none. Implied values are this entry's own claim, never make.fun's. Gas figures in farm plans are typical ranges for the chain, labelled as estimates; check the protocol's own pages before moving funds.</p>
+  <p>Implied value is this radar's own claim from the snapshot's figures — TVL, 7-day growth and time running with no token — not a prediction that a token launches, or when. A protocol "records no token" when its DefiLlama record carries none; that is not proof it has none. Farm-plan costs are typical gas estimates for the main chain, not quotes. Judge: the model lives in <code>lib/model.ts</code> (<code>fitCurve</code>, <code>blindTest</code>, <code>buildRadar</code>, <code>farmPlan</code>), the page in <code>dashboard/app.js</code> (<code>renderBoard</code>, <code>renderDetail</code>, <code>sandbox</code>).</p>
+  <p class="fine">Token Launch Radar · make.fun bounty token-radar-01 · Data: DefiLlama snapshot 2026-11-14</p>
 </footer>
-
 <script src="../data.js"></script>
 <script src="app.js"></script>
 </body>
