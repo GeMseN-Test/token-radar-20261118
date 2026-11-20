@@ -91,10 +91,12 @@ function main(): void {
   }
 
   // The dossier is written last: the scorer rebuilds it from this /output.
+  const dossierPath = join(out, 'dossier.json');
   writeFileSync(
-    join(out, 'dossier.json'),
+    dossierPath,
     buildDossier(out, { text_max_bytes: TEXT_CAP, screenshots: SHOT_CAP, dashboard: { max_files: 400, max_bytes: 4_194_304 } }),
   );
+  const dossierBytes = statSync(dossierPath).size;
 
   const top = first.board[0]!;
   const kept = first.radar.ablation[first.radar.ablation.length - 1]!;
@@ -103,7 +105,7 @@ function main(): void {
       `token radar: global fit log10(mcap) = ${first.radar.global_fit.a.toFixed(3)} + ${first.radar.global_fit.b.toFixed(3)} x log10(TVL) on ${first.radar.peers} peers, R2 ${first.radar.global_fit.r2.toFixed(3)}; kept model LOO miss x${kept.loo_miss.toFixed(2)}, walk-forward x${kept.wf_miss.toFixed(2)}\n` +
       `token radar: top ${top.name} $${top.implied_value_usd.toLocaleString('en-US')} expected (value if launches $${top.value_if_launches_usd.toLocaleString('en-US')} x ${(top.launch_odds * 100).toFixed(0)}% odds)\n` +
       `token radar: verdicts FARM ${first.radar.verdict_counts.FARM} / THIN ${first.radar.verdict_counts.THIN} / SKIP ${first.radar.verdict_counts.SKIP}; odds held out ${first.radar.odds.loo_correct_pct}% vs base ${first.radar.odds.base_rate_pct}%\n` +
-      `token radar: wrote ${join(out, 'board.json')}, ${join(out, 'data.js')}, ${join(out, 'dashboard')}, ${join(out, 'screenshots')} (${shots.length} images) and ${join(out, 'dossier.json')}\n`,
+      `token radar: wrote ${join(out, 'board.json')}, ${join(out, 'data.js')}, ${join(out, 'dashboard')}, ${join(out, 'screenshots')} (${shots.length} images) and ${join(out, 'dossier.json')} (${dossierBytes.toLocaleString('en-US')} bytes)\n`,
   );
 }
 
