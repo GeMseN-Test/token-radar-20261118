@@ -1,98 +1,93 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Token Launch Radar — 181 protocols, fitted pricing, 6-model blind test</title>
+<title>Token Launch Radar — 198 protocols, comps-priced, walk-forward tested</title>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
 <header class="top">
   <div>
     <h1>Token Launch Radar</h1>
-    <p class="sub">181 pre-token protocols ranked by implied launch value — fitted pricing, blind-tested, with a costed farm plan and a verdict on every row.</p>
-    <p class="meta" id="meta"></p>
+    <p class="sub" id="snapshot-line">198 protocols that record no token, ranked by expected launch value = value if it launches &times; launch odds</p>
   </div>
-  <div class="badge">Snapshot <span id="asof"></span> · No network · All figures from the snapshot alone</div>
+  <div class="top-right" id="as-of"></div>
 </header>
 
-<section class="kpis" id="kpis" aria-label="Key numbers"></section>
+<section class="kpis" id="kpis" aria-label="Key figures"></section>
 
 <section class="recon" id="recon" aria-label="Reconciliation"></section>
 
-<section class="card" id="modelcard" aria-label="Value model">
-  <h2>How the value is priced</h2>
-  <p id="equation"></p>
-  <p class="fine" id="modelnote"></p>
-  <table class="blind" id="blind">
-    <thead><tr><th>Model</th><th>Leave-one-out error</th><th>LOO within 2×</th><th>5-fold CV error</th><th>CV within 2×</th><th></th></tr></thead>
-    <tbody></tbody>
-  </table>
-  <p class="fine">Error = median absolute % error on the 128 live peers (their real market caps); "within 2×" = share of peers priced between half and twice their real cap. Lower error is better. Launch pricing is genuinely dispersed — live mcap/TVL multiples run from 0.01× to 2.97× — so no model here is precise; the kept model wins because it has the lowest error on both tests, and the v1-style category-median model is worst out of sample even though it looks better in-sample (small categories memorise their own median). A single 26-peer holdout was measured first and thrown away: it swings 70–430% between splits for every model — one split is a lottery, not a test. The ridge was tried and rejected: its fitted growth and age coefficients come out negative, pricing fast-growing, long-running protocols down — the opposite of what a launch radar should reward.</p>
-</section>
-
-<section class="toolbar" aria-label="Filters">
-  <input id="q" type="search" placeholder="Search name or slug…" aria-label="Search">
-  <select id="cat" aria-label="Category"><option value="">All categories</option></select>
-  <select id="chain" aria-label="Chain"><option value="">All chains</option></select>
-  <select id="verdict" aria-label="Verdict">
-    <option value="">All verdicts</option><option>FARM</option><option>THIN</option><option>SKIP</option>
-  </select>
-  <label class="check"><input id="watch" type="checkbox"> Watchlist only</label>
-  <select id="sort" aria-label="Sort">
-    <option value="rank">Sort: rank</option><option value="tvl">Sort: TVL ↓</option>
-    <option value="growth">Sort: 7d growth ↓</option><option value="net">Sort: net value ↓</option>
-    <option value="cost">Sort: plan cost ↑</option>
-  </select>
-  <button id="compareBtn" type="button">Compare (0)</button>
-  <button id="csvBtn" type="button">Export CSV</button>
-  <button id="jsonBtn" type="button">Export JSON</button>
-</section>
-
-<nav class="tabs" aria-label="Lists">
-  <button type="button" data-tab="board" class="active">Candidates · <span id="nBoard"></span></button>
-  <button type="button" data-tab="live">Already trading · <span id="nLive"></span></button>
-  <button type="button" data-tab="setaside">Set aside · <span id="nSet"></span></button>
-</nav>
-<p class="showing" id="showing"></p>
-
-<main id="boardwrap">
-  <table class="board" id="board">
-    <thead><tr><th>#</th><th>Protocol</th><th>Implied value</th><th>TVL</th><th>7d</th><th>Verdict</th><th>Net / farmer</th><th>Plan cost</th><th></th></tr></thead>
-    <tbody></tbody>
-  </table>
-  <table class="board hidden" id="livetab">
-    <thead><tr><th>#</th><th>Protocol</th><th>Category</th><th>TVL</th><th>Market cap</th><th>Multiple</th></tr></thead>
-    <tbody></tbody>
-  </table>
-  <table class="board hidden" id="settab">
-    <thead><tr><th>#</th><th>Protocol</th><th>TVL</th><th>Why it is not on the board</th></tr></thead>
-    <tbody></tbody>
-  </table>
-</main>
-
-<section class="detail hidden" id="detail" aria-label="Protocol detail"></section>
-
-<section class="sandbox card" id="sandbox" aria-label="Sandbox">
-  <h2>Sandbox — what if this protocol changes?</h2>
-  <p class="fine">Pick a board protocol, move its TVL and 7-day growth, and watch the implied value move. Same curve and tilts as the board; age and spread stay as listed.</p>
-  <div class="sandrow">
-    <label>Protocol <select id="sandSlug"></select></label>
-    <label>TVL <input id="sandTvl" type="range" min="5" max="3000" step="5" value="500"> <output id="sandTvlOut"></output></label>
-    <label>7d growth <input id="sandGrowth" type="range" min="-50" max="27" step="1" value="0"> <output id="sandGrowthOut"></output></label>
+<section class="method" id="method">
+  <h2>How a launch is priced</h2>
+  <p class="formula" id="formula"></p>
+  <p id="method-note"></p>
+  <div class="tables">
+    <div>
+      <h3>Group premiums — median mcap / curve, per group</h3>
+      <table id="group-table"><thead><tr><th>Group</th><th>Peers</th><th>Premium</th></tr></thead><tbody></tbody></table>
+      <p class="fine">Premiums are clamped to 0.5&times;–2.0&times;. A separate curve per group was tried and dropped: with 9–24 peers a group its slope runs wild (the lend group fitted b=1.09) and it loses walk-forward.</p>
+    </div>
+    <div>
+      <h3>Blind test — each step priced on data it never saw</h3>
+      <table id="ablation-table"><thead><tr><th>Step</th><th>Left out</th><th>Within 3&times;</th><th>Older &rarr; newer</th><th>Within 3&times;</th></tr></thead><tbody></tbody></table>
+      <p class="fine" id="ablation-note"></p>
+    </div>
   </div>
-  <p class="sandout" id="sandOut"></p>
+  <div class="checks" id="checks"></div>
 </section>
 
-<section class="compare card hidden" id="compare" aria-label="Compare">
-  <h2>Compare</h2>
-  <div id="compareBody"></div>
-  <p class="fine"><button id="clearCompare" type="button">Clear comparison</button></p>
+<section class="scatter-wrap">
+  <h2>Market cap against TVL — the curve the board is priced on</h2>
+  <svg id="scatter" viewBox="0 0 640 300" role="img" aria-label="Scatter plot of market cap against TVL"></svg>
+  <p class="fine" id="scatter-note"></p>
+</section>
+
+<section class="controls" aria-label="Board controls">
+  <label>Deposit <select id="deposit"><option value="1000" selected>$1,000</option><option value="10000">$10,000</option></select></label>
+  <label>Drop share <select id="share"><option value="0.035">3.5%</option><option value="0.07">7%</option><option value="0.10" selected>10%</option><option value="0.14">14%</option></select></label>
+  <label>Search <input id="search" type="search" placeholder="protocol name"></label>
+  <label>Group <select id="group"><option value="">Any group</option></select></label>
+  <label>Chain <select id="chain"><option value="">Any chain</option></select></label>
+  <label>Verdict <select id="verdict"><option value="">Any verdict</option><option>FARM</option><option>THIN</option><option>SKIP</option></select></label>
+  <button id="export-csv" type="button">CSV</button>
+  <button id="export-json" type="button">JSON</button>
+  <button id="hide-summary" type="button">Hide summary</button>
+</section>
+
+<nav class="tabs" id="tabs" aria-label="Board tabs"></nav>
+
+<section class="summary" id="summary"></section>
+
+<table class="board" id="board">
+  <thead><tr>
+    <th data-sort="rank">Rank</th><th data-sort="name">Protocol</th><th data-sort="tvl_usd">TVL</th>
+    <th data-sort="change_7d">7d</th><th data-sort="age_days">No token for</th><th data-sort="launch_odds">Launch odds</th>
+    <th data-sort="value_if_launches_usd">Value if launches</th><th data-sort="implied_value_usd">Implied value &middot; range</th>
+    <th data-sort="slice_usd">Airdrop slice</th><th data-sort="net_usd">Net of all costs</th><th data-sort="verdict">Verdict</th>
+  </tr></thead>
+  <tbody></tbody>
+</table>
+<p class="count" id="count"></p>
+
+<section class="detail" id="detail" hidden></section>
+
+<section class="lists">
+  <div>
+    <h2>Token on record — 416 protocols, already launched or ticketed</h2>
+    <p class="fine">A protocol records a token when the snapshot carries a market cap or a ticker symbol for it. These are the anchors the curve is fitted on, and they are never ranked.</p>
+    <ul id="on-record" class="plain"></ul>
+  </div>
+  <div>
+    <h2>Set aside — 144 protocols, each for one stated reason</h2>
+    <p class="fine">Pre-token protocols with no ticker that the house rule sets aside, in priority order: bridge, liquid staking, exchange custody, versioned listing, wrapped or staked.</p>
+    <ul id="set-aside" class="plain"></ul>
+  </div>
 </section>
 
 <footer>
-  <p>Implied value is this radar's own claim from the snapshot's figures — TVL, 7-day growth and time running with no token — not a prediction that a token launches, or when. A protocol "records no token" when its DefiLlama record carries none; that is not proof it has none. Farm-plan costs are typical gas estimates for the main chain, not quotes. Judge: the model lives in <code>lib/model.ts</code> (<code>fitCurve</code>, <code>blindTest</code>, <code>buildRadar</code>, <code>farmPlan</code>), the page in <code>dashboard/app.js</code> (<code>renderBoard</code>, <code>renderDetail</code>, <code>sandbox</code>).</p>
-  <p class="fine">Token Launch Radar · make.fun bounty token-radar-01 · Data: DefiLlama snapshot 2026-11-14</p>
+  <p>Snapshot: DefiLlama protocols, fetched 2026-11-14. Implied values are this radar's own claim from the snapshot's figures — TVL, seven-day growth, time with no token, group, and name-stem kinship — never a hardcoded list of names. Farm costs are typical gas estimates for the protocol's main chain. Nothing here predicts whether or when a token is issued.</p>
 </footer>
 <script src="../data.js"></script>
 <script src="app.js"></script>

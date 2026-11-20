@@ -1,33 +1,36 @@
-# Token Launch Radar — 181 protocols, fitted pricing, 6-model blind test, costed farm plans
+# Token Launch Radar — 198 protocols, comps-priced, walk-forward tested
 
-![make.fun](https://make.fun/badge/token-radar-01.svg)
-![make.fun](https://make.fun/badge/token-radar-01/GeMseN-Test/token-radar-20261118.svg)
-![make.fun](https://make.fun/badge/token-radar-01/GeMseN-Test/token-radar-20261118/rank.svg)
-![make.fun](https://make.fun/badge/token-radar-01/GeMseN-Test/token-radar-20261118/reward.svg)
+![Token Launch Radar](https://make.fun/badge/token-radar-01.svg)
+![Token Launch Radar](https://make.fun/badge/token-radar-01/GeMseN-Test/token-radar-20261118.svg)
+![Rank](https://make.fun/badge/token-radar-01/GeMseN-Test/token-radar-20261118/rank.svg)
+![Reward](https://make.fun/badge/token-radar-01/GeMseN-Test/token-radar-20261118/reward.svg)
 
-Entry for the make.fun bounty [token-radar-01 — Build the best token launch radar](https://make.fun/bounty/token-radar-01): 181 pre-token protocols ranked by implied launch value, each with a costed farm plan and a FARM / THIN / SKIP verdict.
+Entry for the [token-radar-01 bounty](https://make.fun/bounty/token-radar-01): "Build the best token launch radar". It reads the sealed DefiLlama snapshot (758 protocols, 2026-11-14) and hands in a dashboard that ranks the 198 protocols that record no token by what their launch would be worth, each with the steps to farm it.
 
 ## What it does
 
-`main.ts` reads the sealed DefiLlama snapshot (`/input/snapshot.json`, 758 protocols as of 2026-11-14), prices every pre-token protocol with a model fitted at runtime, and writes a ranked board (`/output/board.json`), the dashboard data (`/output/data.js`), the static dashboard (`/output/dashboard/`) and the judge's dossier (`/output/dossier.json`).
-
-## The model
-
-- **Fitted pricing curve** — `log10(market cap) = a + b × log10(TVL)`, fitted by least squares on the 128 live peers (protocols whose token already trades), recomputed on every run. Implied value = curve(TVL) × growth tilt × age tilt × category-spread tilt. Growth is winsorised at the snapshot's own p99, because one protocol grew +4,448% in a week on a fresh listing.
-- **Blind test on the page** — six candidate models scored by leave-one-out over all 128 peers AND five-fold cross-validation (median of five folds split by slug hash). The kept model, curve + tilts, and the rejected ridge (its fitted growth and age coefficients come out negative — a fresh-listing artefact) are all shown with their numbers. A single 26-peer holdout was measured first and thrown away: it swings 70–430% between splits for every model, so one split is a lottery, not a test.
-- **The board** — 181 rows: the 40 protocols on the house watchlist, plus the 141 largest below-floor pre-token protocols that pass the house rule. Every one of the 758 snapshot protocols is accounted for on the page: 181 on the board + 144 already trading (listed separately) + 433 set aside with the reason each was left off. No protocol is counted twice, none is missing.
-- **Verdict per row** — net value per farmer = 2% of implied value × 1-in-4 launch chance ÷ estimated farmers (TVL ÷ $100k, clamped 200–10,000) − farm-plan cost. FARM when net ≥ $150, THIN when net ≥ $25, SKIP below that. Rank is how big the launch could be; verdict is whether farming it pays you after cost and crowd.
-- **Farm plans** — 5 concrete steps per protocol, each stating its dollar cost (typical gas for the main chain, labelled an estimate) and the minutes it takes. Templates are (category group × gas tier).
-- **Dashboard** — light theme, KPI strip, reconciliation strip, model card with the blind-test table, sortable/filterable board, detail view with the full maths, a sandbox (move TVL and growth, watch implied move), side-by-side compare for up to 3 protocols, and CSV/JSON export. No network.
+- **One fitted comps curve** — log10(market cap) = 3.025 + 0.522 × log10(TVL), fitted at runtime on the 128 traded peers (R² 0.194), times a per-group premium (lend 0.76×, dex 2.04× clamped to 2.00×, yield 0.50×, rwa 1.54×, other 1.21×), a 7-day momentum tilt (winsorized at the snapshot p99, +26.7%), an age tilt (up to +25% over three years with no token) and a kinship term for name stems shared with a token that already trades.
+- **Launch odds** — the chance a protocol records a token, read off the snapshot itself (age bucket, TVL tier, group, smoothed to the 54.9% base rate). Held out it calls 65.2% right. Implied value = value if it launches × launch odds; rank 1 is Polymarket International at $46.5M expected.
+- **A range on every row** — P25–P75 and P10–P90 from the kept model's leave-one-out residuals, with a rank range to match. 50.0% of held-out caps land inside the printed P25–P75 range, 79.7% inside P10–P90.
+- **Blind-tested, two ways** — leave-one-out (×3.52 typical miss, 46% within 3×) and walk-forward: one fit on the older half of traded tokens prices the newer half (×2.94, 52% within 3×). A stepwise ablation table shows every term earning — or costing — its place.
+- **Deposit-sized farm plans** — every row carries five concrete steps with gas cost and minutes, and a verdict (FARM 22 / THIN 58 / SKIP 118) from the net per farmer: farmers = TVL / deposit, slice = implied × 10% / farmers, net = slice − fees. The dashboard lets the reader change the deposit ($1,000 / $10,000) and the drop share (3.5% / 7% / 14%) and recomputes every row.
+- **All 758 protocols accounted for** — 198 ranked (40 watchlist + 20 off-list above the floor + 138 below it), 416 with a token on record, 144 set aside each for one stated reason (bridge 43, liquid staking 43, exchange custody 42, versioned listing 11, wrapped or staked 5).
+- **Tools, not just a board** — sandbox sliders on every detail view (TVL, growth, age), compare for up to three rows, CSV/JSON export, sortable and filterable table, a TVL-vs-market-cap scatter with the fitted curve.
 
 ## Run it
 
+Node 22, standard library only. The program reads `/input/snapshot.json` and writes `/output/board.json`, `/output/data.js`, the dashboard, the screenshots and `/output/dossier.json`:
+
 ```sh
-mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts --input kit/token-radar-01-kit/input/snapshot.json
+node main.ts --input kit/input/snapshot.json --output out
 ```
 
-Node 22+. The program is deterministic: the same snapshot bytes give the same output bytes.
+It runs twice internally and refuses to write unless both builds are byte-identical.
 
----
+## Files
 
-Built for the make.fun token-radar-01 bounty. Referral: `5c2wyg2x`.
+- `main.ts` — entrypoint: snapshot in, board + dashboard data + dossier out.
+- `lib/model.ts` — the model, the blind tests, the farm economics, the reconciliation.
+- `dashboard/` — the page: `index.html`, `app.css`, `app.js` (no network, no framework).
+- `vendor/makefun-board.ts` — the kit's dossier library, unchanged.
+- `screenshots/` — board, detail view, filtered view (1280×800).
