@@ -1,7 +1,7 @@
-// Token Launch Radar — ronde 7 entrypoint (Node 22, standard library only).
+// Token Launch Radar — ronde 8 entrypoint (Node 22, standard library only).
 //
 // Reads the sealed snapshot (/input/snapshot.json, or --input <file|dir>),
-// prices every pre-token protocol with the comps model in lib/model.ts,
+// prices every pre-token protocol with the radar-4 model in lib/model.ts,
 // writes the ranked board to /output/board.json, the dashboard's data to
 // /output/data.js, copies dashboard/ and screenshots/ to /output, and writes
 // /output/dossier.json with the vendored make.fun library.
@@ -99,12 +99,14 @@ function main(): void {
   const dossierBytes = statSync(dossierPath).size;
 
   const top = first.board[0]!;
-  const kept = first.radar.ablation[first.radar.ablation.length - 1]!;
+  const kept = first.radar.ablation.find((s) => s.kept) ?? first.radar.ablation[first.radar.ablation.length - 1]!;
+  const keptOdds = first.radar.odds;
   process.stdout.write(
     `token radar: ${snap.protocols.length} protocols, ${snap.watchlist.length} on the watchlist, ${first.board.length} rows ranked (${first.radar.reconciliation.token_on_record} token on record, ${first.radar.reconciliation.set_aside} set aside)\n` +
-      `token radar: global fit log10(mcap) = ${first.radar.global_fit.a.toFixed(3)} + ${first.radar.global_fit.b.toFixed(3)} x log10(TVL) on ${first.radar.peers} peers, R2 ${first.radar.global_fit.r2.toFixed(3)}; kept model LOO miss x${kept.loo_miss.toFixed(2)}, walk-forward x${kept.wf_miss.toFixed(2)}\n` +
+      `token radar: dated fit log10(mcap) = ${first.radar.global_fit.a.toFixed(3)} + ${first.radar.global_fit.b.toFixed(3)} x log10(TVL) on ${first.radar.peers_dated} peers, R2 ${first.radar.global_fit.r2.toFixed(3)}; kept model LOO miss x${kept.loo_miss.toFixed(2)}, walk-forward x${kept.wf_miss.toFixed(2)}\n` +
+      `token radar: odds logistic Brier LOO ${keptOdds.loo_brier} (${keptOdds.loo_correct_pct}% called right) / walk-forward ${keptOdds.wf_brier} (${keptOdds.wf_correct_pct}%); base rate ${keptOdds.base_rate_pct}%\n` +
       `token radar: top ${top.name} $${top.implied_value_usd.toLocaleString('en-US')} expected (value if launches $${top.value_if_launches_usd.toLocaleString('en-US')} x ${(top.launch_odds * 100).toFixed(0)}% odds)\n` +
-      `token radar: verdicts FARM ${first.radar.verdict_counts.FARM} / THIN ${first.radar.verdict_counts.THIN} / SKIP ${first.radar.verdict_counts.SKIP}; odds held out ${first.radar.odds.loo_correct_pct}% vs base ${first.radar.odds.base_rate_pct}%\n` +
+      `token radar: verdicts FARM ${first.radar.verdict_counts.FARM} / MARGINAL ${first.radar.verdict_counts.MARGINAL} / SKIP ${first.radar.verdict_counts.SKIP}; board checksum ${first.radar.checksum}\n` +
       `token radar: wrote ${join(out, 'board.json')}, ${join(out, 'data.js')}, ${join(out, 'dashboard')}, ${join(out, 'screenshots')} (${shots.length} images) and ${join(out, 'dossier.json')} (${dossierBytes.toLocaleString('en-US')} bytes)\n`,
   );
 }

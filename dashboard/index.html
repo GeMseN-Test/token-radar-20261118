@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Token Launch Radar — 198 protocols, comps-priced, walk-forward tested</title>
+<title>Token Launch Radar — 198 protocols, dual-tested pricing, logistic launch odds</title>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -19,6 +19,8 @@
 
 <section class="recon" id="recon" aria-label="Reconciliation"></section>
 
+<section class="integrity" id="integrity" aria-label="Integrity strip"></section>
+
 <section class="method" id="method">
   <h2>How a launch is priced</h2>
   <p class="formula" id="formula"></p>
@@ -27,12 +29,24 @@
     <div>
       <h3>Group premiums — median mcap / curve, per group</h3>
       <table id="group-table"><thead><tr><th>Group</th><th>Peers</th><th>Premium</th></tr></thead><tbody></tbody></table>
-      <p class="fine">Premiums are clamped to 0.5&times;–2.0&times;. A separate curve per group was tried and dropped: with 9–24 peers a group its slope runs wild (the lend group fitted b=1.09) and it loses walk-forward.</p>
+      <p class="fine">Premiums are clamped to 0.5&times;–2.0&times;. A separate curve per group was tried and dropped: with 9–24 peers a group its slope runs wild and it loses walk-forward. A category ridge was tried too: it wins leave-one-out (&times;2.92) but loses walk-forward (&times;3.16), so it stays out.</p>
     </div>
     <div>
       <h3>Blind test — each step priced on data it never saw</h3>
-      <table id="ablation-table"><thead><tr><th>Step</th><th>Left out</th><th>Within 3&times;</th><th>Older &rarr; newer</th><th>Within 3&times;</th></tr></thead><tbody></tbody></table>
+      <table id="ablation-table"><thead><tr><th>Step</th><th>Left out</th><th>&le;3&times;</th><th>Older &rarr; newer</th><th>&le;3&times;</th></tr></thead><tbody></tbody></table>
       <p class="fine" id="ablation-note"></p>
+    </div>
+  </div>
+  <div class="tables">
+    <div>
+      <h3>Launch odds — Brier score, lower is better</h3>
+      <table id="odds-table"><thead><tr><th>Step</th><th>Brier, left out</th><th>Right</th><th>Brier, newer</th><th>Right</th></tr></thead><tbody></tbody></table>
+      <p class="fine" id="odds-note"></p>
+    </div>
+    <div>
+      <h3>Is the printed range honest?</h3>
+      <table id="range-table"><thead><tr><th>Range</th><th>Stated</th><th>Left out</th><th>Newer</th></tr></thead><tbody></tbody></table>
+      <p class="fine" id="range-note"></p>
     </div>
   </div>
   <div class="checks" id="checks"></div>
@@ -45,12 +59,13 @@
 </section>
 
 <section class="controls" aria-label="Board controls">
-  <label>Deposit <select id="deposit"><option value="1000" selected>$1,000</option><option value="10000">$10,000</option></select></label>
-  <label>Drop share <select id="share"><option value="0.035">3.5%</option><option value="0.07">7%</option><option value="0.10" selected>10%</option><option value="0.14">14%</option></select></label>
+  <label>Plan size <select id="planpct"><option value="0.00005">0.005% of TVL</option><option value="0.0001">0.01% of TVL</option><option value="0.0002" selected>0.02% of TVL</option><option value="0.0005">0.05% of TVL</option></select></label>
+  <label>Drop share <select id="share"><option value="0.035">3.5%</option><option value="0.07" selected>7%</option><option value="0.14">14%</option></select></label>
+  <label>Horizon <select id="horizon"><option value="4">4 weeks</option><option value="12" selected>12 weeks</option><option value="26">26 weeks</option></select></label>
   <label>Search <input id="search" type="search" placeholder="protocol name"></label>
   <label>Group <select id="group"><option value="">Any group</option></select></label>
   <label>Chain <select id="chain"><option value="">Any chain</option></select></label>
-  <label>Verdict <select id="verdict"><option value="">Any verdict</option><option>FARM</option><option>THIN</option><option>SKIP</option></select></label>
+  <label>Verdict <select id="verdict"><option value="">Any verdict</option><option>FARM</option><option>MARGINAL</option><option>SKIP</option></select></label>
   <button id="export-csv" type="button">CSV</button>
   <button id="export-json" type="button">JSON</button>
   <button id="hide-summary" type="button">Hide summary</button>
@@ -65,7 +80,7 @@
     <th data-sort="rank">Rank</th><th data-sort="name">Protocol</th><th data-sort="tvl_usd">TVL</th>
     <th data-sort="change_7d">7d</th><th data-sort="age_days">No token for</th><th data-sort="launch_odds">Launch odds</th>
     <th data-sort="value_if_launches_usd">Value if launches</th><th data-sort="implied_value_usd">Implied value &middot; range</th>
-    <th data-sort="slice_usd">Airdrop slice</th><th data-sort="net_usd">Net of all costs</th><th data-sort="verdict">Verdict</th>
+    <th data-sort="net_usd">Net of all costs</th><th data-sort="net_per_hour_usd">Net / hour</th><th data-sort="verdict">Verdict</th>
   </tr></thead>
   <tbody></tbody>
 </table>
@@ -76,7 +91,7 @@
 <section class="lists">
   <div>
     <h2>Token on record — 416 protocols, already launched or ticketed</h2>
-    <p class="fine">A protocol records a token when the snapshot carries a market cap or a ticker symbol for it. These are the anchors the curve is fitted on, and they are never ranked.</p>
+    <p class="fine">A protocol records a token when the snapshot carries a market cap or a ticker symbol for it. These are the anchors the odds are fitted on, and they are never ranked.</p>
     <ul id="on-record" class="plain"></ul>
   </div>
   <div>
@@ -87,7 +102,7 @@
 </section>
 
 <footer>
-  <p>Snapshot: DefiLlama protocols, fetched 2026-11-14. Implied values are this radar's own claim from the snapshot's figures — TVL, seven-day growth, time with no token, group, and name-stem kinship — never a hardcoded list of names. Farm costs are typical gas estimates for the protocol's main chain. Nothing here predicts whether or when a token is issued.</p>
+  <p>Snapshot: DefiLlama protocols, fetched 2026-11-14. Implied values are this radar's own claim from the snapshot's figures — TVL, seven-day growth, time with no token, group, chain count and name-stem kinship — never a hardcoded list of names. Farm costs are typical gas estimates for the protocol's main chain plus, for DEX pairs only, the swap fee and slippage on the half of the plan that must be swapped. Nothing here predicts whether or when a token is issued.</p>
 </footer>
 <script src="../data.js"></script>
 <script src="app.js"></script>
