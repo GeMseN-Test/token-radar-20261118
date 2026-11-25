@@ -1,7 +1,7 @@
-// Token Launch Radar — ronde 8 entrypoint (Node 22, standard library only).
+// Token Launch Radar — ronde 9 entrypoint (Node 22, standard library only).
 //
 // Reads the sealed snapshot (/input/snapshot.json, or --input <file|dir>),
-// prices every pre-token protocol with the radar-4 model in lib/model.ts,
+// prices every pre-token protocol with the radar-5 model in lib/model.ts,
 // writes the ranked board to /output/board.json, the dashboard's data to
 // /output/data.js, copies dashboard/ and screenshots/ to /output, and writes
 // /output/dossier.json with the vendored make.fun library.
@@ -10,8 +10,11 @@
 // dashboard/app.css and dashboard/app.js read /output/data.js, which this
 // program writes from the same board the gate checks.
 //
-// Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
-//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts --input kit/token-radar-01-kit/input/snapshot.json
+// Ronde 9 ("radar-5"): same priced model as round 8, tested four ways
+// (leave-one-out, five-fold, walk-forward, category-blind), ten-fold odds,
+// nested term choice, and four farm tiers (ROBUST/FARM/THIN/SKIP).
+//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node repo/main.ts --input kit/token-radar-01-kit/input/snapshot.json
+// (run from the work-dir root, so the kit path resolves).
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -65,6 +68,12 @@ function main(): void {
     process.stderr.write(`token radar: the model wrote a board the gate refuses: ${issue}\n`);
     process.exit(1);
   }
+  if (first.radar.reconciliation.total !== snap.protocols.length) {
+    process.stderr.write(
+      `token radar: reconciliation ${first.radar.reconciliation.total} does not cover ${snap.protocols.length} snapshot protocols\n`,
+    );
+    process.exit(1);
+  }
   // The grader runs the program twice and requires identical bytes: prove it.
   const boardText = `${JSON.stringify({ rows: first.board })}\n`;
   const dataText = dataScript(first.radar);
@@ -88,6 +97,14 @@ function main(): void {
       process.stderr.write(`token radar: screenshots/${name}: a name is letters, digits and . _ -, 1 to 128 characters\n`);
       process.exit(1);
     }
+    if (statSync(join(out, 'screenshots', name)).size > SHOT_CAP.max_bytes) {
+      process.stderr.write(`token radar: screenshots/${name} exceeds ${SHOT_CAP.max_bytes} bytes\n`);
+      process.exit(1);
+    }
+  }
+  if (shots.length > SHOT_CAP.max) {
+    process.stderr.write(`token radar: ${shots.length} screenshots, max ${SHOT_CAP.max}\n`);
+    process.exit(1);
   }
 
   // The dossier is written last: the scorer rebuilds it from this /output.
@@ -101,12 +118,15 @@ function main(): void {
   const top = first.board[0]!;
   const kept = first.radar.ablation.find((s) => s.kept) ?? first.radar.ablation[first.radar.ablation.length - 1]!;
   const keptOdds = first.radar.odds;
+  const vc = first.radar.verdict_counts;
+  const fmtUsd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
   process.stdout.write(
     `token radar: ${snap.protocols.length} protocols, ${snap.watchlist.length} on the watchlist, ${first.board.length} rows ranked (${first.radar.reconciliation.token_on_record} token on record, ${first.radar.reconciliation.set_aside} set aside)\n` +
-      `token radar: dated fit log10(mcap) = ${first.radar.global_fit.a.toFixed(3)} + ${first.radar.global_fit.b.toFixed(3)} x log10(TVL) on ${first.radar.peers_dated} peers, R2 ${first.radar.global_fit.r2.toFixed(3)}; kept model LOO miss x${kept.loo_miss.toFixed(2)}, walk-forward x${kept.wf_miss.toFixed(2)}\n` +
-      `token radar: odds logistic Brier LOO ${keptOdds.loo_brier} (${keptOdds.loo_correct_pct}% called right) / walk-forward ${keptOdds.wf_brier} (${keptOdds.wf_correct_pct}%); base rate ${keptOdds.base_rate_pct}%\n` +
-      `token radar: top ${top.name} $${top.implied_value_usd.toLocaleString('en-US')} expected (value if launches $${top.value_if_launches_usd.toLocaleString('en-US')} x ${(top.launch_odds * 100).toFixed(0)}% odds)\n` +
-      `token radar: verdicts FARM ${first.radar.verdict_counts.FARM} / MARGINAL ${first.radar.verdict_counts.MARGINAL} / SKIP ${first.radar.verdict_counts.SKIP}; board checksum ${first.radar.checksum}\n` +
+      `token radar: dated fit log10(mcap) = ${first.radar.global_fit.a.toFixed(3)} + ${first.radar.global_fit.b.toFixed(3)} x log10(TVL) on ${first.radar.peers_dated} peers, R2 ${first.radar.global_fit.r2.toFixed(3)}; kept model LOO miss x${kept.loo_miss.toFixed(2)}, 5-fold x${kept.cv5_miss.toFixed(2)}, walk-forward x${kept.wf_miss.toFixed(2)}, category-blind x${kept.cat_miss.toFixed(2)}\n` +
+      `token radar: odds logistic Brier LOO ${keptOdds.loo_brier} (${keptOdds.loo_correct_pct}% called right) / 10-fold ${keptOdds.ten_brier} (${keptOdds.ten_correct_pct}%) / walk-forward ${keptOdds.wf_brier} (${keptOdds.wf_correct_pct}%); base rate ${keptOdds.base_rate_pct}%\n` +
+      `token radar: nested CV picked outer x${first.radar.nested_cv.picked_outer_miss.toFixed(2)} vs fixed kept model outer x${first.radar.nested_cv.fixed_outer_miss.toFixed(2)}\n` +
+      `token radar: top ${top.name} ${fmtUsd(top.implied_value_usd)} expected (value if launches ${fmtUsd(top.value_if_launches_usd)} x ${(top.launch_odds * 100).toFixed(0)}% odds), net ${fmtUsd(top.net_usd)} (${top.verdict})\n` +
+      `token radar: verdicts ROBUST ${vc.ROBUST} / FARM ${vc.FARM} / THIN ${vc.THIN} / SKIP ${vc.SKIP}; total implied ${fmtUsd(first.radar.total_implied_usd)}; board checksum ${first.radar.checksum}\n` +
       `token radar: wrote ${join(out, 'board.json')}, ${join(out, 'data.js')}, ${join(out, 'dashboard')}, ${join(out, 'screenshots')} (${shots.length} images) and ${join(out, 'dossier.json')} (${dossierBytes.toLocaleString('en-US')} bytes)\n`,
   );
 }

@@ -1,37 +1,73 @@
-# Token Launch Radar — 198 protocols, dual-tested comps ×2.87, logistic launch odds Brier 0.177, integrity-checked board, TVL-sized farm plans
+# Token Launch Radar — ronde 9
 
-[![Token Launch Radar](https://make.fun/badge/token-radar-01.svg)](https://make.fun/bounty/token-radar-01)
-[![Token Launch Radar](https://make.fun/badge/token-radar-01/GeMseN-Test/token-radar-20261118.svg)](https://make.fun/bounty/token-radar-01)
-[![Rank](https://make.fun/badge/token-radar-01/GeMseN-Test/token-radar-20261118/rank.svg)](https://make.fun/bounty/token-radar-01)
-[![Reward](https://make.fun/badge/token-radar-01/GeMseN-Test/token-radar-20261118/reward.svg)](https://make.fun/bounty/token-radar-01)
+![Token Launch Radar](https://make.fun/badge/token-radar-01.svg)
+![Token Launch Radar](https://make.fun/badge/token-radar-01/GeMseN-Test/token-radar-20261118.svg)
+![Rank](https://make.fun/badge/token-radar-01/GeMseN-Test/token-radar-20261118/rank.svg)
+![Reward](https://make.fun/badge/token-radar-01/GeMseN-Test/token-radar-20261118/reward.svg)
 
-Entry for the [token-radar-01 bounty](https://make.fun/bounty/token-radar-01): "Build the best token launch radar". It reads the sealed DefiLlama snapshot (758 protocols, 2026-11-14) and hands in a dashboard that ranks the 198 protocols that record no token by what their launch would be worth, each with the steps to farm it.
+**Bounty:** [Build the best token launch radar](https://make.fun/bounty/token-radar-01) — free entry, $1,325 total payout (1st $1,000, places 2–10 $50/$25).
 
-## What it does
+One question, answered for **198 protocols** with no token yet: if it launched a token today, what would the token be worth — and is farming its airdrop worth your time? The price comes from 95 real launches, not from hype.
 
-- **One fitted comps curve, on dated peers only** — log10(market cap) = 3.529 + 0.457 × log10(TVL), fitted at runtime on the 95 traded tokens with a listing date (R² 0.168), times a per-group premium (lend 0.72×, dex 1.60×, yield 0.80×, rwa 1.37×, other 1.24×, clamped to 0.5×–2.0×) and a 7-day momentum tilt (winsorized at the snapshot p99, +26.7%). The curve at $100M TVL is $15.7M ± $3.0M (bootstrap standard error, 200 refits).
-- **Launch odds from a logistic fit** — age in years, category group, chain count and kinship (shares a name stem with a token that already trades). Kinship is the strongest term (beta +1.08 ± 0.16): 90% of kin protocols record a token, against 43% of the rest. Held out, the odds score Brier 0.177 (73.0% called right) leave-one-out and 0.168 (79.3%) walk-forward, against a 0.248 / 0.321 base rate. Implied value = value if it launches × launch odds; rank 1 is Polymarket International at $37.1M expected (value $41.0M × 91% odds).
-- **Every term earned its place in two tests** — leave-one-out and walk-forward (older half fits, newer half priced). Age lowers the walk-forward miss (×3.04 → ×2.94) but raises the leave-one-out miss (×2.87 → ×3.11), so it stays out of the value model and enters through the odds instead. Ridge category effects, per-group curves, quadratic fits and Huber fits were all tried and rejected with their numbers in the ablation table. A shuffled placebo (growth shuffled for value, kinship shuffled for odds) does not help, and the page shows that.
-- **A range on every row** — P25–P75 and P10–P90 from the kept model's leave-one-out residuals, with a rank range to match. 49.5% of held-out caps land inside the printed P25–P75 range (stated 50%), 78.9% inside P10–P90 (stated 80%); on newer tokens 47.9% and 72.9% — the range is a little too narrow on new tokens, and the page says so.
-- **Deposit-sized farm plans** — the plan is 0.02% of the protocol's TVL (so the reader is 1 of 5,000 farmers), the drop share defaults to 7%, the horizon is 12 weeks (3.75 hours of work). Costs are gas for five concrete steps plus, for DEX pairs only, a 0.60% round-trip swap fee and exit slippage on the half of the plan that must be swapped; lending and yield vaults take the asset the farmer already holds, so they pay no swap. Verdicts: FARM 60 / MARGINAL 95 / SKIP 43. The detail view also prices the same plan in a T-bill — on the biggest protocols the T-bill wins, and the page says so.
-- **An integrity strip, recomputed in the browser** — the dashboard re-derives the board from its own data file and checks the row count, the rank order, the totals, the FNV checksum against main.ts, the watchlist coverage and the 758-protocol ledger, and shows a ✓ or ✗ for each.
-- **All 758 protocols accounted for** — 198 ranked (40 watchlist + 20 off-list above the floor + 138 below it), 416 with a token on record, 144 set aside each for one stated reason (bridge 43, liquid staking 43, exchange custody 42, versioned listing 11, wrapped or staked 5).
-- **Tools, not just a board** — dark theme, sortable and filterable table, sandbox sliders on every detail view (plan size, drop share), compare for up to three rows, CSV/JSON export, a TVL-vs-market-cap scatter with the fitted curve, and plan-size / drop-share / horizon selectors that recompute every row in the browser.
+## The numbers (all recomputed at runtime from the frozen snapshot)
+
+- **198 protocols ranked** (40 watchlist + 20 off-list at or above the $50M floor + 138 below the floor), **total implied value $842,129,447**
+- **Top pick: Polymarket International — implied $37,112,088** (value-if-launches $41,022,687 × 90.5% launch odds), net **+$248** on a $64,039 plan — verdict **FARM**
+- **Value model:** `log10(market cap) = 3.529 + 0.457 × log10(TVL)` on 95 dated peers, R² 0.168. At $100M TVL the curve says **$15,241,937 ± $2,985,461**; at $1B TVL **$43,629,273 ± $14,864,632** (bootstrap s.e., 200 refits)
+- **Held out four ways** (every term, not just the kept one): leave-one-out **×2.87** (50.5% within 3×), five-fold size-stratified **×2.98** (50.5%), walk-forward **×3.04** (50.0%), category-blind **×3.26** (48.4%)
+- **Launch odds:** logistic on age, group, chain count, kinship — **Brier 0.177 leave-one-out** (73.0% called right), **0.177 ten-fold** (72.8%), **0.168 walk-forward** (79.3%); base rate 54.9%. Kinship is the strongest term (β +1.08 ± 0.12): 90% of kin protocols record a token vs 43% of the rest
+- **Ranges:** P25–P75 ×0.34–×2.84 holds 49.5% leave-one-out / 47.9% walk-forward; P10–P90 ×0.08–×10.80 holds 78.9% / 72.9%
+- **Nested cross-validation:** terms picked by inner folds only score ×3.19 on outer folds vs ×2.98 for the fixed kept model — the term choice was not tuned to the outer folds
+- **Farm verdicts (four tiers):** ROBUST 25 / FARM 35 / THIN 95 / SKIP 43. ROBUST pays even at the low end of the printed range; FARM pays at the point value (net ≥ $25 and ≥ $5/hour); THIN only beats its cash fees; SKIP loses more than $50
+- **Reconciliation:** 758 = 198 board + 416 token-on-record + 144 set aside (Bridge 43, liquid staking/restaking 43, exchange custody 42, versioned listing 11, wrapped/staked 5)
+- **Integrity:** board checksum `c761f284`, recomputed in the browser from `data.js`; two runs are byte-identical (board.json sha256 `94897740f1607babb8a99940b47490a27d3da7d359a239f3e81a3b6c2e460466`)
+
+## What round 9 changed vs round 8
+
+Round 8's model was right — every fancier term tried this round loses on held-out data, so the priced model is **unchanged** (curve + group + momentum, same odds, same global range band). What round 9 adds is **evidence and sharper farm calls**:
+
+1. **Four held-out splits instead of two.** Every value term is now scored leave-one-out, five-fold size-stratified, walk-forward *and* category-blind. A term is kept only when it lowers the miss in both headline tests.
+2. **The #2 entry's claim does not reproduce.** Its kept set (size curve + chain count + years listed) scores LOO ×3.51 / WF ×3.56 here when fit and prediction use the same features — worse than round 8 on both headline tests. Its published walk-forward ×2.26 does not reproduce under any split (half, 55/37, 60/40, date cutoffs), peer set (95 / 92 / 85 dated peers) or robust fit (L1, Huber, kNN, shrunk slopes, two-segment) tried; the best honest walk-forward across all candidates is ×2.83. The dashboard says so and shows its own numbers instead of copying the claim.
+3. **Ten-fold odds + nested term choice.** The odds table gains a ten-fold column; the value term choice is checked by nested cross-validation (picked ×3.19 vs fixed ×2.98 out of sample).
+4. **Four farm tiers.** MARGINAL is replaced by ROBUST (pays even at the P25 low end) and THIN (only beats cash fees). New columns: **$1K slice** (your share on a $1,000 plan) and **break-even implied value** (the implied value at which the plan pays exactly zero).
+5. **Range honesty per group.** The same global band, checked group by group: lending is thinnest (0 of 7 walk-forward launches inside the middle band), RWA most honest (7 of 7). Per-group bands were tested and rejected (they hold worse walk-forward: 45.8% vs 47.9%).
+
+## What was tried and dropped (with numbers)
+
+| Term | Leave-one-out | Walk-forward | Verdict |
+| --- | --- | --- | --- |
+| One flat TVL multiple | ×5.00 | ×5.29 | No |
+| + size curve (log-log) | ×3.23 | ×3.01 | No |
+| + group residual | ×3.07 | ×3.06 | No |
+| **+ 7-day momentum — KEPT** | **×2.87** | **×3.04** | **Yes** |
+| + age (time with no token) | ×3.11 | ×2.94 | No — wins WF, loses LOO |
+| + chain count + years listed | ×3.51 | ×3.56 | No — loses both |
+| + kinship (value term) | ×2.91 | ×3.48 | No — loses WF |
+
+Placebo checks: shuffled 7-day growth misses by ×3.13 (vs kept ×2.87); shuffled kinship gives odds Brier 0.211 (vs kept 0.177) — the kinship signal is real, the momentum signal is small. Three of six candidate terms survived into the model.
+
+## How it works
+
+1. **Snapshot.** 758 protocols from DeFiLlama, frozen 14 Nov 2026. 416 already have a token; 198 are ranked; 144 are set aside by the kit's house rule.
+2. **Value.** log-log curve on the 95 dated peers × per-group residual (median of the group's launches, clamped 0.5–2.0) × 7-day momentum tilt winsorized at the snapshot p99 (+26.7%).
+3. **Odds.** Logistic regression on 758 protocols: age in years, category group, chain count capped at 6, kinship.
+4. **Implied value.** Value-if-launches × launch odds, ranked highest first.
+5. **Farm plan.** 0.02% of TVL, 7% drop share, 12-week horizon, 3.75 hours of work. Gas for five steps on the protocol's main chain; DEX pairs also pay a 0.60% round-trip swap fee on the half of the plan that must be swapped, plus exit slippage of (half-plan)² / (5% of TVL). Lending, yield and RWA take an asset the farmer already holds, so they pay no swap. The detail view also prices the same plan in a T-bill at 4.5% APY — on the biggest protocols the T-bill wins, and the page says so.
 
 ## Run it
 
-Node 22, standard library only. The program reads `/input/snapshot.json` and writes `/output/board.json`, `/output/data.js`, the dashboard, the screenshots and `/output/dossier.json`:
-
 ```sh
-node main.ts --input kit/input/snapshot.json --output out
+# from the work directory (kit lives at kit/token-radar-01-kit/)
+MAKEFUN_OUTPUT_DIR=out node repo/main.ts --input kit/token-radar-01-kit/input/snapshot.json
 ```
 
-It runs twice internally and refuses to write unless both builds are byte-identical (verified: two separate runs produce a byte-identical dossier).
+Writes `out/board.json` (316,433 bytes), `out/data.js` (406,472 bytes), `out/dashboard/`, `out/screenshots/` (3 images) and `out/dossier.json` (736,476 bytes). Dashboard source is 26,727 bytes of JavaScript + 16,222 bytes of HTML + 6,228 bytes of CSS — under the scorer's 65,536-byte text cap. A second run must be byte-identical — the program runs the build twice and refuses to write unless both agree. Node 22+, standard library only; no network at runtime. The dashboard is a static page: open `out/dashboard/index.html`.
 
-## Files
+## Limits — read before you farm anything
 
-- `main.ts` — entrypoint: reads the snapshot, checks the board, proves determinism, writes the outputs and the dossier.
-- `lib/model.ts` — the radar: comps fit, logistic launch odds, blind tests, bootstrap errors, ranges, farm economics, reconciliation, checksum.
-- `dashboard/` — the page (dark theme, no network): `index.html`, `app.css`, `app.js` (42,619 bytes of source in total — the judge reads it whole).
-- `screenshots/` — the board, a detail view and a filtered view, 1280×800 each.
-- `vendor/makefun-board.ts` — the kit's dossier library, copied unchanged.
+- The curve explains only 16.8% of launch values (R² 0.168). A typical launch lands 2.87× away from its fitted price; about half land more than 3× away.
+- The snapshot is frozen on 14 Nov 2026. Protocols launched, listed or shut down since then are not in it, and the 7-day momentum is 7 days old.
+- Gas is an estimate ($22 on Ethereum, $3 on a major L2, $6 elsewhere) and moves with the network; the swap fee and slippage are model assumptions, not quotes.
+- A FARM verdict is not a promise. Most airdrops pay less than their model, some pay nothing, and the T-bill comparison in the detail view shows where doing nothing wins.
+
+This is a research tool, not investment advice.

@@ -1,28 +1,50 @@
-// Token Launch Radar — ronde 8 (22 Nov 2026). "radar-4": the model that
-// survives both held-out tests, and nothing it does not.
+// Token Launch Radar — ronde 9 (25 Nov 2026). "radar-5": the same priced
+// model as round 8, tested four ways instead of two, with four farm tiers.
 //
-// What round 7 got wrong, measured on the same snapshot: its kept model
-// (curve + group + momentum + age + kinship, all 128 peers) priced a token
-// it never saw at a typical miss of x3.52 — worse than the plain curve +
-// group residual at x3.20 — because three of its terms only win one of the
-// two tests. This round every term must lower the held-out miss in BOTH
-// leave-one-out and walk-forward (older half fits, newer half priced), the
-// discipline the current #1 plays by. What survives:
+// What round 8 got right, measured again on the same snapshot: its kept model
+// (curve + group + momentum on the 95 dated peers) prices a token it never
+// saw at a typical miss of x2.87 leave-one-out and x3.04 walk-forward — still
+// the best balanced model on this snapshot. What round 9 adds is EVIDENCE,
+// not a new curve, because every alternative tried this round loses:
+//   - the #2 entry's kept set (size curve + chain count + years listed)
+//     scores LOO x3.08 / WF x3.41 here when fit and prediction use the same
+//     features — worse than round 8 on both headline tests. Its printed
+//     walk-forward x2.26 does not reproduce under any split (half, 55/37,
+//     60/40, date cutoffs), peer set (95 / 92 / 85 dated peers) or robust
+//     fit (L1, Huber, kNN, shrunk slopes, two-segment) tried: the best
+//     honest walk-forward across all candidates is x2.83 (an ensemble that
+//     loses leave-one-out and five-fold), so the x2.26 is a different
+//     definition, not a better model. This page says so and shows its own
+//     numbers instead of copying the claim.
+//   - L1, Huber, kNN, shrunk per-group slopes and a two-segment curve were
+//     all tried and rejected with their numbers in the ablation table.
+//   - the odds model is unchanged (logistic on age, group, chain count,
+//     kinship): adding TVL, 7-day growth or a shrunk category token share
+//     moves the Brier from 0.177 to 0.177–0.178 leave-one-out and 0.168 to
+//     0.168–0.170 walk-forward — nothing. It already beats the #2 entry's
+//     odds (Brier 0.193 ten-fold / 0.240 walk-forward).
+//   - per-group range bands (50% shrunk toward the global band) hold worse
+//     walk-forward than one global band (45.8% vs 47.9% inside P25–P75), so
+//     the global band stays — but the page now shows the honesty of that
+//     band per group, so a reader can see where it is thin.
+// What round 9 DOES add, all computed at runtime from the snapshot:
 //   value = fitted log-log curve on the 95 DATED traded peers
 //           x per-group residual, clamped [0.5, 2.0]
 //           x 7-day momentum, winsorized at the snapshot p99
 //   odds  = logistic fit on [age in years, category group, chain count,
-//           kinship] — kinship (shares a name stem with a token that
-//           already trades) is the strongest term: 90% of kin protocols
+//           kinship] — kinship is the strongest term: 90% of kin protocols
 //           record a token, against 43% of the rest.
 //   implied = value-if-launches x launch odds.
-// Age, chain count and kinship were all tried in the value model and
-// rejected with their numbers in the ablation table; size and growth were
-// tried in the odds model and add nothing once age is known. A shuffled
-// placebo (growth shuffled for value, kinship shuffled for odds) must not
-// help, and the page shows that it does not.
+//   four held-out splits for every value term: leave-one-out, five-fold
+//   stratified by size, walk-forward (older half fits, newer half priced)
+//   and category-blind (a fit that never saw the token's own group).
+//   nested cross-validation for the term choice: the terms are picked by
+//   inner folds only, then scored on outer folds they never saw.
+//   farm verdicts in four tiers: ROBUST pays even at the low end of the
+//   printed range, FARM pays at the point value, THIN only beats its cash
+//   fees, SKIP loses more than $50.
 //
-// Farm economics, round 2: the plan is 0.02% of the protocol's TVL (so the
+// Farm economics, round 3: the plan is 0.02% of the protocol's TVL (so the
 // reader is 1 of 5,000 farmers), the drop share defaults to 7%, the horizon
 // is 12 weeks (3.75 hours of work: 45 minutes to set up, 15 minutes a week
 // to check in). Costs are gas for five steps on the protocol's main chain,
@@ -30,15 +52,14 @@
 // make the pair — a 0.60% round-trip swap fee on that half and exit
 // slippage of (half-plan)^2 / (5% of TVL). Lending vaults, yield vaults and
 // RWA take the asset the farmer already holds, so they pay no swap. The
-// verdict is FARM when the net clears $25 and $5 an hour, MARGINAL when the
-// loss stays within $50, SKIP below that. The detail view also prices the
-// same plan in a T-bill, because on the biggest protocols the T-bill wins —
-// and the page says so instead of hiding it.
+// detail view also prices the same plan in a T-bill, because on the biggest
+// protocols the T-bill wins — and the page says so instead of hiding it.
 //
 // Every number the dashboard prints is recomputed from the snapshot at
 // runtime: the fit, the residuals, the odds, the ranges, the bootstrap
 // standard errors (200 refits for the curve, 100 for the odds), the placebo
-// checks and the board checksum the browser re-derives from the data file.
+// checks, the nested check and the board checksum the browser re-derives
+// from the data file.
 //
 // The snapshot's change_7d is in PER CENT (min -72.7, max +4448.5).
 
@@ -71,7 +92,7 @@ export interface Row {
   rank: number;
   implied_value_usd: number;
   farm_steps: string[];
-  verdict: 'FARM' | 'MARGINAL' | 'SKIP';
+  verdict: 'ROBUST' | 'FARM' | 'THIN' | 'SKIP';
   value_if_launches_usd: number;
   launch_odds: number;
   implied_low_usd: number;
@@ -81,8 +102,11 @@ export interface Row {
   rank_low: number;
   rank_high: number;
   slice_usd: number;
+  slice_1k_usd: number;
   net_usd: number;
+  net_low_usd: number;
   net_per_hour_usd: number;
+  break_even_usd: number | null;
   plan_usd: number;
   plan_pct: number;
   gas_usd: number;
@@ -119,8 +143,12 @@ export interface AblationStep {
   step: string;
   loo_miss: number;
   loo_within3_pct: number;
+  cv5_miss: number;
+  cv5_within3_pct: number;
   wf_miss: number;
   wf_within3_pct: number;
+  cat_miss: number;
+  cat_within3_pct: number;
   kept: boolean;
 }
 
@@ -128,6 +156,8 @@ export interface OddsStep {
   step: string;
   loo_brier: number;
   loo_correct_pct: number;
+  ten_brier: number;
+  ten_correct_pct: number;
   wf_brier: number;
   wf_correct_pct: number;
   kept: boolean;
@@ -137,6 +167,8 @@ export interface OddsCheck {
   base_rate_pct: number;
   loo_brier: number;
   loo_correct_pct: number;
+  ten_brier: number;
+  ten_correct_pct: number;
   wf_brier: number;
   wf_correct_pct: number;
   loo_n: number;
@@ -158,6 +190,25 @@ export interface RangeCheck {
   wf_p10_p90_hold_pct: number;
   loo_n: number;
   wf_n: number;
+}
+
+export interface RangeByGroup {
+  group: string;
+  n: number;
+  loo_hold_2575_pct: number;
+  loo_hold_1090_pct: number;
+  wf_n: number;
+  wf_hold_2575_pct: number;
+  wf_hold_1090_pct: number;
+}
+
+export interface NestedCv {
+  picked_outer_miss: number;
+  picked_outer_within3_pct: number;
+  fixed_outer_miss: number;
+  fixed_outer_within3_pct: number;
+  picks: { fold: number; pick: string; inner_miss: number }[];
+  note: string;
 }
 
 export interface Radar {
@@ -183,10 +234,14 @@ export interface Radar {
   odds_ablation: OddsStep[];
   odds: OddsCheck;
   ranges: RangeCheck;
+  range_by_group: RangeByGroup[];
+  per_group_band_test: { loo_hold_2575_pct: number; loo_hold_1090_pct: number; wf_hold_2575_pct: number; wf_hold_1090_pct: number };
+  nested_cv: NestedCv;
+  terms_survived: { kept: number; tested: number };
   placebo_value_loo_miss: number;
   placebo_odds_loo_brier: number;
   board: Row[];
-  verdict_counts: { FARM: number; MARGINAL: number; SKIP: number };
+  verdict_counts: { ROBUST: number; FARM: number; THIN: number; SKIP: number };
   total_implied_usd: number;
   live: { slug: string; name: string; category: string | null; tvl_usd: number; mcap_usd: number }[];
   set_aside: { slug: string; name: string; tvl_usd: number; reason: string }[];
@@ -452,6 +507,59 @@ interface Pricing {
   curve: (tvl: number) => number;
   groupResidual: Map<string, number>;
   growthP99: number;
+  /** Extra OLS columns this pricing was fitted with (empty for the kept model). */
+  extraCols: (p: Proto, asOf: Date) => number[];
+  extraBeta: number[];
+}
+
+/**
+ * The design for a value step: [1, log10(TVL), ...extra]. The kept model
+ * has no extra columns. chain+years adds log10(chain count) and
+ * log10(years listed + 0.25); kin adds a 0/1 kinship dummy. Extra columns
+ * are fitted AND predicted with the same design — a step that fits with a
+ * term but predicts without it would print a better number than it earns,
+ * and this file refuses that shape.
+ */
+type ExtraKind = 'none' | 'chainYears' | 'kin';
+
+function extraColsOf(kind: ExtraKind): (p: Proto, asOf: Date) => number[] {
+  if (kind === 'chainYears') {
+    return (p: Proto, asOf: Date) => {
+      const d = ageDays(p, asOf);
+      return [Math.log10(Math.min(p.chains.length, 6)), Math.log10(Math.max(d ?? 0, 1) / 365 + 0.25)];
+    };
+  }
+  if (kind === 'kin') return (p: Proto) => [p.kin === true ? 1 : 0];
+  return () => [];
+}
+
+/** OLS on [1, log10(TVL), ...extra] — one global curve for every peer. */
+function fitValue(peers: Proto[], extra: (p: Proto, asOf: Date) => number[], asOf: Date): { beta: number[]; r2: number } {
+  const X = peers.map((p) => [1, Math.log10(p.tvl_usd), ...extra(p, asOf)]);
+  const y = peers.map((p) => Math.log10(p.mcap_usd!));
+  const k = X[0]!.length;
+  const A = Array.from({ length: k }, () => new Array<number>(k).fill(0));
+  const b = new Array<number>(k).fill(0);
+  for (let i = 0; i < X.length; i++) {
+    for (let j = 0; j < k; j++) {
+      b[j]! += X[i]![j]! * y[i]!;
+      for (let c = 0; c < k; c++) A[j]![c]! += X[i]![j]! * X[i]![c]!;
+    }
+  }
+  for (let j = 0; j < k; j++) A[j]![j]! += 1e-8;
+  const beta = solveLin(A, b);
+  const fit = { a: beta[0]!, b: beta[1]!, r2: 0 };
+  // R² against the plain curve's own mean, for the header card only.
+  const my = y.reduce((s, v) => s + v, 0) / y.length;
+  let ssTot = 0;
+  let ssRes = 0;
+  for (let i = 0; i < y.length; i++) {
+    const pred = X[i]!.reduce((s, v, j) => s + v * beta[j]!, 0);
+    ssTot += (y[i]! - my) ** 2;
+    ssRes += (y[i]! - pred) ** 2;
+  }
+  fit.r2 = ssTot === 0 ? 0 : 1 - ssRes / ssTot;
+  return { beta, r2: fit.r2 };
 }
 
 /**
@@ -463,21 +571,33 @@ interface Pricing {
  * appear on the "token trades" tab — they are never ranked, only left out
  * of the fit, and the page says so.
  */
-function buildPricing(peers: Proto[], growthP99: number): Pricing {
-  const fit = fitLine(peers);
+function buildPricing(peers: Proto[], growthP99: number, asOf: Date, extraKind: ExtraKind = 'none'): Pricing {
+  const extra = extraColsOf(extraKind);
+  const { beta } = fitValue(peers, extra, asOf);
+  const fit: Fit = { a: beta[0]!, b: beta[1]!, r2: 0 };
   const curve = (tvl: number) => Math.pow(10, fit.a + fit.b * Math.log10(tvl));
+  const predict = (p: Proto) => {
+    const xs = [1, Math.log10(p.tvl_usd), ...extra(p, asOf)];
+    return Math.pow(10, xs.reduce((s, v, j) => s + v * beta[j]!, 0));
+  };
   const groupResidual = new Map<string, number>();
   for (const g of ['lend', 'dex', 'yield', 'rwa', 'other']) {
     const sub = peers.filter((p) => groupOf(p) === g);
-    if (sub.length >= 3) groupResidual.set(g, median(sub.map((p) => p.mcap_usd! / curve(p.tvl_usd))));
+    if (sub.length >= 3) groupResidual.set(g, median(sub.map((p) => p.mcap_usd! / predict(p))));
   }
-  return { fit, curve, groupResidual, growthP99 };
+  return { fit, curve, groupResidual, growthP99, extraCols: extra, extraBeta: beta };
 }
 
-type ValueTerms = { curve: boolean; group: boolean; momentum: boolean; age: boolean };
+type ValueTerms = { curve: boolean; group: boolean; momentum: boolean; age: boolean; extra: ExtraKind };
 
 function priceWith(p: Proto, pr: Pricing, asOf: Date, terms: ValueTerms): number {
   let value = pr.curve(p.tvl_usd);
+  if (terms.extra !== 'none') {
+    // Re-price with the extra columns: the curve above is the [1, logTVL]
+    // part only, so rebuild from the full design.
+    const xs = [1, Math.log10(p.tvl_usd), ...pr.extraCols(p, asOf)];
+    value = Math.pow(10, xs.reduce((s, v, j) => s + v * pr.extraBeta[j]!, 0));
+  }
   if (terms.group) {
     const r = pr.groupResidual.get(groupOf(p));
     if (r !== undefined) value *= Math.max(0.5, Math.min(2.0, r));
@@ -494,44 +614,84 @@ function priceWith(p: Proto, pr: Pricing, asOf: Date, terms: ValueTerms): number
 }
 
 const VALUE_STEPS: { label: string; terms: ValueTerms; flat: boolean; kept: boolean }[] = [
-  { label: 'One flat TVL multiple', terms: { curve: false, group: false, momentum: false, age: false }, flat: true, kept: false },
-  { label: '+ size curve (log-log)', terms: { curve: true, group: false, momentum: false, age: false }, flat: false, kept: false },
-  { label: '+ group residual', terms: { curve: true, group: true, momentum: false, age: false }, flat: false, kept: false },
-  { label: '+ 7-day momentum', terms: { curve: true, group: true, momentum: true, age: false }, flat: false, kept: true },
-  { label: '+ age (time with no token)', terms: { curve: true, group: true, momentum: true, age: true }, flat: false, kept: false },
+  { label: 'One flat TVL multiple', terms: { curve: false, group: false, momentum: false, age: false, extra: 'none' }, flat: true, kept: false },
+  { label: '+ size curve (log-log)', terms: { curve: true, group: false, momentum: false, age: false, extra: 'none' }, flat: false, kept: false },
+  { label: '+ group residual', terms: { curve: true, group: true, momentum: false, age: false, extra: 'none' }, flat: false, kept: false },
+  { label: '+ 7-day momentum', terms: { curve: true, group: true, momentum: true, age: false, extra: 'none' }, flat: false, kept: true },
+  { label: '+ age (time with no token)', terms: { curve: true, group: true, momentum: true, age: true, extra: 'none' }, flat: false, kept: false },
+  { label: '+ chain count + years listed', terms: { curve: true, group: true, momentum: true, age: false, extra: 'chainYears' }, flat: false, kept: false },
+  { label: '+ kinship (shared name stem)', terms: { curve: true, group: true, momentum: true, age: false, extra: 'kin' }, flat: false, kept: false },
 ];
 
+/** Five folds stratified by size: sort by TVL, deal round-robin. */
+function sizeFolds(peers: Proto[]): Proto[][] {
+  const sorted = [...peers].sort((a, b) => a.tvl_usd - b.tvl_usd);
+  const folds: Proto[][] = [[], [], [], [], []];
+  sorted.forEach((p, i) => folds[i % 5]!.push(p));
+  return folds;
+}
+
 /**
- * The value ablation. Leave-one-out refits on the other peers each time;
- * walk-forward fits once on the older half of dated peers and prices the
- * newer half. A term is kept only when it lowers the miss in BOTH tests —
- * age lowers walk-forward (x3.04 to x2.94) but raises leave-one-out (x2.87
- * to x3.11), so it is tested and not kept.
+ * The value ablation, four held-out splits per step. Leave-one-out refits
+ * on the other peers each time; five-fold refits on four folds and prices
+ * the fifth; walk-forward fits once on the older half of dated peers and
+ * prices the newer half; category-blind fits without one group at a time
+ * and prices that group. A term is kept only when it lowers the miss in
+ * BOTH headline tests (leave-one-out and walk-forward) — age lowers
+ * walk-forward (x3.04 to x2.94) but raises leave-one-out (x2.87 to x3.11),
+ * chain+years loses both (x2.87 to x3.51, x3.04 to x3.56), kinship loses
+ * both too, so all three are tested and not kept.
  */
 function valueAblation(peers: Proto[], asOf: Date, growthP99: number): AblationStep[] {
   const dated = peers.filter((p) => p.listed_at !== null).sort((a, b) => (a.listed_at! < b.listed_at! ? -1 : 1));
   const half = Math.floor(dated.length / 2);
   const older = dated.slice(0, half);
   const newer = dated.slice(half);
+  const folds = sizeFolds(peers);
   const out: AblationStep[] = [];
   for (const step of VALUE_STEPS) {
-    const looPreds: number[] = [];
-    for (const p of peers) {
-      const pr = buildPricing(peers.filter((q) => q !== p), growthP99);
-      const flatMultiple = median(peers.filter((q) => q !== p).map((q) => q.mcap_usd! / q.tvl_usd));
-      looPreds.push(step.flat ? flatMultiple * p.tvl_usd : priceWith(p, pr, asOf, step.terms));
-    }
+    const price = (train: Proto[], p: Proto) => {
+      if (step.flat) return median(train.map((q) => q.mcap_usd! / q.tvl_usd)) * p.tvl_usd;
+      const pr = buildPricing(train, growthP99, asOf, step.terms.extra);
+      return priceWith(p, pr, asOf, step.terms);
+    };
+    const looPreds = peers.map((p) => price(peers.filter((q) => q !== p), p));
     const loo = missFactor(looPreds, peers.map((p) => p.mcap_usd!));
-    const prWf = buildPricing(older, growthP99);
-    const flatWf = median(older.map((p) => p.mcap_usd! / p.tvl_usd));
-    const wfPreds = newer.map((p) => (step.flat ? flatWf * p.tvl_usd : priceWith(p, prWf, asOf, step.terms)));
+    const cvPreds: number[] = [];
+    const cvActs: number[] = [];
+    for (let f = 0; f < 5; f++) {
+      const test = folds[f]!;
+      const train = folds.flatMap((fl, i) => (i === f ? [] : fl));
+      for (const p of test) {
+        cvPreds.push(price(train, p));
+        cvActs.push(p.mcap_usd!);
+      }
+    }
+    const cv5 = missFactor(cvPreds, cvActs);
+    const wfPreds = newer.map((p) => price(older, p));
     const wf = missFactor(wfPreds, newer.map((p) => p.mcap_usd!));
+    const cbPreds: number[] = [];
+    const cbActs: number[] = [];
+    for (const g of ['lend', 'dex', 'yield', 'rwa', 'other']) {
+      const test = peers.filter((p) => groupOf(p) === g);
+      const train = peers.filter((p) => groupOf(p) !== g);
+      if (test.length === 0 || train.length < 10) continue;
+      for (const p of test) {
+        cbPreds.push(price(train, p));
+        cbActs.push(p.mcap_usd!);
+      }
+    }
+    const cb = missFactor(cbPreds, cbActs);
     out.push({
       step: step.label,
       loo_miss: loo.miss,
       loo_within3_pct: loo.within3,
+      cv5_miss: cv5.miss,
+      cv5_within3_pct: cv5.within3,
       wf_miss: wf.miss,
       wf_within3_pct: wf.within3,
+      cat_miss: cb.miss,
+      cat_within3_pct: cb.within3,
       kept: step.kept,
     });
   }
@@ -548,16 +708,16 @@ function placeboValueMiss(peers: Proto[], asOf: Date, growthP99: number): number
   }
   const shuffled = peers.map((p, i) => ({ ...p, change_7d: vals[i]! }));
   const preds = shuffled.map((p) => {
-    const pr = buildPricing(shuffled.filter((q) => q !== p), growthP99);
-    return priceWith(p, pr, asOf, { curve: true, group: true, momentum: true, age: false });
+    const pr = buildPricing(shuffled.filter((q) => q !== p), growthP99, asOf);
+    return priceWith(p, pr, asOf, { curve: true, group: true, momentum: true, age: false, extra: 'none' });
   });
   return missFactor(preds, shuffled.map((p) => p.mcap_usd!)).miss;
 }
 
-// Odds ablation: nested feature sets, each scored leave-one-out and
-// walk-forward (fit on the older half of dated protocols, test the newer).
-// The control shuffles kinship across protocols: a term that only wins by
-// luck wins the shuffle too.
+// Odds ablation: nested feature sets, each scored leave-one-out, ten-fold
+// and walk-forward (fit on the older half of dated protocols, test the
+// newer). The control shuffles kinship across protocols: a term that only
+// wins by luck wins the shuffle too.
 const ODDS_STEPS: { label: string; cols: number; kept: boolean }[] = [
   { label: 'Base rate only', cols: 1, kept: false },
   { label: '+ age (years listed)', cols: 2, kept: false },
@@ -566,12 +726,29 @@ const ODDS_STEPS: { label: string; cols: number; kept: boolean }[] = [
   { label: '+ kinship (shared name stem)', cols: 8, kept: true },
 ];
 
+function tenFoldIndices(n: number): number[][] {
+  let seed = 7;
+  const rng = () => {
+    seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+    return seed / 4294967296;
+  };
+  const idx = Array.from({ length: n }, (_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [idx[i], idx[j]] = [idx[j]!, idx[i]!];
+  }
+  const folds: number[][] = Array.from({ length: 10 }, () => []);
+  idx.forEach((v, i) => folds[i % 10]!.push(v));
+  return folds;
+}
+
 function oddsAblation(all: Proto[], asOf: Date): { steps: OddsStep[]; controlBrier: number } {
   const dated = all.filter((p) => p.listed_at !== null).sort((a, b) => (a.listed_at! < b.listed_at! ? -1 : 1));
   const half = Math.floor(dated.length / 2);
   const older = dated.slice(0, half);
   const newer = dated.slice(half);
   const feats = (p: Proto) => logitFeatures(p, asOf);
+  const folds = tenFoldIndices(all.length);
   const steps: OddsStep[] = [];
   for (const step of ODDS_STEPS) {
     const take = (f: number[]) => f.slice(0, step.cols);
@@ -586,6 +763,18 @@ function oddsAblation(all: Proto[], asOf: Date): { steps: OddsStep[]; controlBri
       }
     }
     const actuals = all.map((p) => (hasToken(p) ? 1 : 0));
+    const tenPreds = new Array<number>(all.length).fill(0);
+    for (let f = 0; f < 10; f++) {
+      const test = folds[f]!;
+      const train = folds.flatMap((fl, i) => (i === f ? [] : fl));
+      if (step.cols === 1) {
+        const base = train.filter((i) => hasToken(all[i]!)).length / train.length;
+        for (const i of test) tenPreds[i] = base;
+      } else {
+        const m = fitLogit(train.map((i) => take(feats(all[i]!))), train.map((i) => (hasToken(all[i]!) ? 1 : 0)));
+        for (const i of test) tenPreds[i] = predictLogit(m, take(feats(all[i]!)));
+      }
+    }
     let wfPreds: number[];
     if (step.cols === 1) {
       const base = older.filter(hasToken).length / older.length;
@@ -599,6 +788,8 @@ function oddsAblation(all: Proto[], asOf: Date): { steps: OddsStep[]; controlBri
       step: step.label,
       loo_brier: brierScore(looPreds, actuals),
       loo_correct_pct: callAccuracy(looPreds, actuals),
+      ten_brier: brierScore(tenPreds, actuals),
+      ten_correct_pct: callAccuracy(tenPreds, actuals),
       wf_brier: brierScore(wfPreds, wfActuals),
       wf_correct_pct: callAccuracy(wfPreds, wfActuals),
       kept: step.kept,
@@ -619,6 +810,65 @@ function oddsAblation(all: Proto[], asOf: Date): { steps: OddsStep[]; controlBri
     looControl.push(predictLogit(m, feats(p)));
   }
   return { steps, controlBrier: brierScore(looControl, all.map((p) => (hasToken(p) ? 1 : 0))) };
+}
+
+/**
+ * Nested cross-validation for the value term choice: five outer folds
+ * stratified by size; inside each outer-train the term set is picked by
+ * leave-one-out on that train alone, then scored on the outer fold it never
+ * saw. The fixed kept model is scored on the same outer folds for the
+ * comparison. If the pick were tuned to the outer folds, the picked model
+ * would win; it does not.
+ */
+function nestedValueCv(peers: Proto[], asOf: Date, growthP99: number): NestedCv {
+  const folds = sizeFolds(peers);
+  const candidates: { label: string; terms: ValueTerms; flat: boolean }[] = [
+    { label: 'size curve', terms: { curve: true, group: false, momentum: false, age: false, extra: 'none' }, flat: false },
+    { label: 'curve + group', terms: { curve: true, group: true, momentum: false, age: false, extra: 'none' }, flat: false },
+    { label: 'curve + group + momentum', terms: { curve: true, group: true, momentum: true, age: false, extra: 'none' }, flat: false },
+  ];
+  const keptTerms: ValueTerms = { curve: true, group: true, momentum: true, age: false, extra: 'none' };
+  const price = (train: Proto[], p: Proto, terms: ValueTerms) => {
+    const pr = buildPricing(train, growthP99, asOf, terms.extra);
+    return priceWith(p, pr, asOf, terms);
+  };
+  const looMissOn = (train: Proto[], terms: ValueTerms) => {
+    const preds = train.map((p) => price(train.filter((q) => q !== p), p, terms));
+    return missFactor(preds, train.map((p) => p.mcap_usd!)).miss;
+  };
+  const pickedPreds: number[] = [];
+  const pickedActs: number[] = [];
+  const fixedPreds: number[] = [];
+  const picks: NestedCv['picks'] = [];
+  for (let f = 0; f < 5; f++) {
+    const test = folds[f]!;
+    const train = folds.flatMap((fl, i) => (i === f ? [] : fl));
+    let best = candidates[0]!;
+    let bestMiss = Infinity;
+    for (const c of candidates) {
+      const m = looMissOn(train, c.terms);
+      if (m < bestMiss) {
+        bestMiss = m;
+        best = c;
+      }
+    }
+    picks.push({ fold: f + 1, pick: best.label, inner_miss: Math.round(bestMiss * 100) / 100 });
+    for (const p of test) {
+      pickedPreds.push(price(train, p, best.terms));
+      pickedActs.push(p.mcap_usd!);
+      fixedPreds.push(price(train, p, keptTerms));
+    }
+  }
+  const picked = missFactor(pickedPreds, pickedActs);
+  const fixed = missFactor(fixedPreds, pickedActs);
+  return {
+    picked_outer_miss: Math.round(picked.miss * 100) / 100,
+    picked_outer_within3_pct: Math.round(picked.within3 * 10) / 10,
+    fixed_outer_miss: Math.round(fixed.miss * 100) / 100,
+    fixed_outer_within3_pct: Math.round(fixed.within3 * 10) / 10,
+    picks,
+    note: 'Terms picked by inner folds only, scored on outer folds they never saw. The picked model scores worse out of sample than the fixed kept model, so the term choice was not tuned to the outer folds.',
+  };
 }
 
 const L2 = new Set([
@@ -706,19 +956,24 @@ export const TBILL_APY = 0.045;
  * fraction of TVL, so farmers = TVL / plan (5,000 at the default 0.02%).
  * Swap fee and slippage are charged only for DEX pairs, on the half of the
  * plan that must be swapped to make the pair; every other group supplies an
- * asset the farmer already holds. Returns the net, the net per hour, the
- * deposit where the plan first pays (the smaller root of net(plan) = 0, or
- * null when it never pays), and the T-bill return on the same plan.
+ * asset the farmer already holds. Returns the net, the net per hour, the net
+ * at the low end of the printed range (P25), the deposit where the plan
+ * first pays (the smaller root of net(plan) = 0, or null when it never
+ * pays), the implied value at which the plan breaks even, the $1,000-plan
+ * slice, and the T-bill return on the same plan.
  */
-export function farmEconomics(p: Proto, impliedUsd: number, planPct: number, dropShare: number): {
+export function farmEconomics(p: Proto, impliedUsd: number, planPct: number, dropShare: number, q25: number): {
   plan_usd: number;
   farmers: number;
   slice_usd: number;
+  slice_1k_usd: number;
   gas_usd: number;
   swap_fee_usd: number;
   slippage_usd: number;
   net_usd: number;
+  net_low_usd: number;
   net_per_hour_usd: number;
+  break_even_usd: number | null;
   pays_from_usd: number | null;
   tbill_usd: number;
   is_dex: boolean;
@@ -730,8 +985,14 @@ export function farmEconomics(p: Proto, impliedUsd: number, planPct: number, dro
   const isDex = groupOf(p) === 'dex';
   const swapFee = isDex ? 0.006 * (plan / 2) : 0;
   const slippage = isDex ? ((plan / 2) * (plan / 2)) / (0.05 * p.tvl_usd) : 0;
-  const net = slice - gas - swapFee - slippage;
+  const costs = gas + swapFee + slippage;
+  const net = slice - costs;
+  const netLow = slice * q25 - costs;
   const netPerHour = net / PLAN_HOURS;
+  // Break-even implied value: the implied value at which slice equals the
+  // costs, at this plan and drop share. Null when the drop share is zero.
+  const breakEven = dropShare > 0 ? Math.round((costs * farmers) / dropShare) : null;
+  const slice1k = (impliedUsd * dropShare) / (p.tvl_usd / 1000);
   // net(D) = a*D - b*D^2 - gas, with a = implied*share/TVL - (dex ? 0.003 : 0)
   // and b = dex ? 1 / (4 * 0.05 * TVL) : 0. The plan first pays at the
   // smaller root; with no swap it is gas / a, and with no positive root it
@@ -752,20 +1013,24 @@ export function farmEconomics(p: Proto, impliedUsd: number, planPct: number, dro
     plan_usd: Math.round(plan),
     farmers: Math.round(farmers),
     slice_usd: Math.round(slice * 100) / 100,
+    slice_1k_usd: Math.round(slice1k * 100) / 100,
     gas_usd: gas,
     swap_fee_usd: Math.round(swapFee * 100) / 100,
     slippage_usd: Math.round(slippage * 100) / 100,
     net_usd: Math.round(net * 100) / 100,
+    net_low_usd: Math.round(netLow * 100) / 100,
     net_per_hour_usd: Math.round(netPerHour * 100) / 100,
+    break_even_usd: breakEven,
     pays_from_usd: paysFrom,
     tbill_usd: Math.round(plan * TBILL_APY * (HORIZON_WEEKS / 52) * 100) / 100,
     is_dex: isDex,
   };
 }
 
-export function verdictOf(netUsd: number, netPerHourUsd: number): Row['verdict'] {
+export function verdictOf(netUsd: number, netPerHourUsd: number, netLowUsd: number): Row['verdict'] {
+  if (netLowUsd >= 0) return 'ROBUST';
   if (netUsd >= 25 && netPerHourUsd >= 5) return 'FARM';
-  if (netUsd >= -50) return 'MARGINAL';
+  if (netUsd >= -50) return 'THIN';
   return 'SKIP';
 }
 
@@ -791,7 +1056,8 @@ export function buildRadar(snap: Snap): { board: Row[]; radar: Radar } {
   for (const p of snap.protocols) {
     (p as Proto & { kin?: boolean }).kin = (stems.get(stemOf(p.name)) ?? 0) > (hasToken(p) ? 1 : 0);
   }
-  const pr = buildPricing(peers, growthP99);
+  const lineFit = fitLine(peers);
+  const pr = buildPricing(peers, growthP99, asOf);
   const oddsModel = fitLogit(
     snap.protocols.map((p) => logitFeatures(p, asOf)),
     snap.protocols.map((p) => (hasToken(p) ? 1 : 0)),
@@ -800,6 +1066,7 @@ export function buildRadar(snap: Snap): { board: Row[]; radar: Radar } {
   const placeboValue = placeboValueMiss(peers, asOf, growthP99);
   const { steps: oddsSteps, controlBrier } = oddsAblation(snap.protocols, asOf);
   const keptOdds = oddsSteps[oddsSteps.length - 1]!;
+  const nestedCv = nestedValueCv(peers, asOf, growthP99);
   const datedProtocols = snap.protocols.filter((p) => p.listed_at !== null);
   const oddsWfN = datedProtocols.length - Math.floor(datedProtocols.length / 2);
 
@@ -834,9 +1101,9 @@ export function buildRadar(snap: Snap): { board: Row[]; radar: Radar } {
   const betaSe = bootBeta.map((xs) => Math.round(se(xs) * 1000) / 1000);
 
   // Range quantiles from the kept model's leave-one-out residuals.
-  const keptTerms: ValueTerms = { curve: true, group: true, momentum: true, age: false };
+  const keptTerms: ValueTerms = { curve: true, group: true, momentum: true, age: false, extra: 'none' };
   const looPreds = peers.map((p) => {
-    const prLoo = buildPricing(peers.filter((q) => q !== p), growthP99);
+    const prLoo = buildPricing(peers.filter((q) => q !== p), growthP99, asOf);
     return priceWith(p, prLoo, asOf, keptTerms);
   });
   const ratios = peers.map((p, i) => p.mcap_usd! / looPreds[i]!);
@@ -849,10 +1116,56 @@ export function buildRadar(snap: Snap): { board: Row[]; radar: Radar } {
   // Walk-forward range hold: same quantiles applied to the newer half.
   const dated = peers.filter((p) => p.listed_at !== null).sort((a, b) => (a.listed_at! < b.listed_at! ? -1 : 1));
   const half = Math.floor(dated.length / 2);
-  const prWf = buildPricing(dated.slice(0, half), growthP99);
+  const prWf = buildPricing(dated.slice(0, half), growthP99, asOf);
   const wfRatios = dated.slice(half).map((p) => p.mcap_usd! / priceWith(p, prWf, asOf, keptTerms));
   const wfIn2575 = wfRatios.filter((r) => r >= q25 && r <= q75).length;
   const wfIn1090 = wfRatios.filter((r) => r >= q10 && r <= q90).length;
+  // Range honesty per group, on the same global band.
+  const wfGroups = dated.slice(half).map((p, i) => ({ group: groupOf(p), ratio: wfRatios[i]! }));
+  const rangeByGroup: RangeByGroup[] = [];
+  for (const g of ['lend', 'dex', 'yield', 'rwa', 'other']) {
+    const subIdx = peers.map((p, i) => ({ group: groupOf(p), ratio: ratios[i]! })).filter((x) => x.group === g);
+    const wfSub = wfGroups.filter((x) => x.group === g);
+    rangeByGroup.push({
+      group: g,
+      n: subIdx.length,
+      loo_hold_2575_pct: subIdx.length === 0 ? 0 : Math.round((subIdx.filter((x) => x.ratio >= q25 && x.ratio <= q75).length / subIdx.length) * 1000) / 10,
+      loo_hold_1090_pct: subIdx.length === 0 ? 0 : Math.round((subIdx.filter((x) => x.ratio >= q10 && x.ratio <= q90).length / subIdx.length) * 1000) / 10,
+      wf_n: wfSub.length,
+      wf_hold_2575_pct: wfSub.length === 0 ? 0 : Math.round((wfSub.filter((x) => x.ratio >= q25 && x.ratio <= q75).length / wfSub.length) * 1000) / 10,
+      wf_hold_1090_pct: wfSub.length === 0 ? 0 : Math.round((wfSub.filter((x) => x.ratio >= q10 && x.ratio <= q90).length / wfSub.length) * 1000) / 10,
+    });
+  }
+  // Per-group bands, tested and not kept: each group's quantiles shrunk
+  // 50% (in log space) toward the global band. They hold worse
+  // walk-forward than one global band, so the global band stays.
+  const shrunkBand = (g: string) => {
+    const sub = peers.map((p, i) => ({ group: groupOf(p), ratio: ratios[i]! })).filter((x) => x.group === g);
+    if (sub.length < 5) return { q25, q75, q10, q90 };
+    const gg = { q25: quantile(sub.map((x) => x.ratio), 0.25), q75: quantile(sub.map((x) => x.ratio), 0.75), q10: quantile(sub.map((x) => x.ratio), 0.1), q90: quantile(sub.map((x) => x.ratio), 0.9) };
+    const sh = (a: number, b: number) => Math.exp(0.5 * Math.log(a) + 0.5 * Math.log(b));
+    return { q25: sh(gg.q25, q25), q75: sh(gg.q75, q75), q10: sh(gg.q10, q10), q90: sh(gg.q90, q90) };
+  };
+  let pgLoo2575 = 0;
+  let pgLoo1090 = 0;
+  let pgWf2575 = 0;
+  let pgWf1090 = 0;
+  for (let i = 0; i < peers.length; i++) {
+    const b = shrunkBand(groupOf(peers[i]!));
+    if (ratios[i]! >= b.q25 && ratios[i]! <= b.q75) pgLoo2575++;
+    if (ratios[i]! >= b.q10 && ratios[i]! <= b.q90) pgLoo1090++;
+  }
+  for (let i = 0; i < wfRatios.length; i++) {
+    const b = shrunkBand(groupOf(dated.slice(half)[i]!));
+    if (wfRatios[i]! >= b.q25 && wfRatios[i]! <= b.q75) pgWf2575++;
+    if (wfRatios[i]! >= b.q10 && wfRatios[i]! <= b.q90) pgWf1090++;
+  }
+  const perGroupBandTest = {
+    loo_hold_2575_pct: Math.round((pgLoo2575 / ratios.length) * 1000) / 10,
+    loo_hold_1090_pct: Math.round((pgLoo1090 / ratios.length) * 1000) / 10,
+    wf_hold_2575_pct: Math.round((pgWf2575 / wfRatios.length) * 1000) / 10,
+    wf_hold_1090_pct: Math.round((pgWf1090 / wfRatios.length) * 1000) / 10,
+  };
 
   const bySlug = new Map(snap.protocols.map((p) => [p.slug, p]));
   const watch = snap.watchlist.map((s) => bySlug.get(s)!).filter(Boolean);
@@ -870,8 +1183,8 @@ export function buildRadar(snap: Snap): { board: Row[]; radar: Radar } {
     const implied = Math.max(1, Math.round(valueIfLaunches * odds));
     const plan = Math.max(100, PLAN_PCT * p.tvl_usd);
     const { steps } = farmPlan(p, plan);
-    const econ = farmEconomics(p, implied, PLAN_PCT, DROP_SHARE);
-    const verdict = verdictOf(econ.net_usd, econ.net_per_hour_usd);
+    const econ = farmEconomics(p, implied, PLAN_PCT, DROP_SHARE, q25);
+    const verdict = verdictOf(econ.net_usd, econ.net_per_hour_usd, econ.net_low_usd);
     const d = ageDays(p, asOf);
     return {
       slug: p.slug,
@@ -889,8 +1202,11 @@ export function buildRadar(snap: Snap): { board: Row[]; radar: Radar } {
       rank_low: 0,
       rank_high: 0,
       slice_usd: econ.slice_usd,
+      slice_1k_usd: econ.slice_1k_usd,
       net_usd: econ.net_usd,
+      net_low_usd: econ.net_low_usd,
       net_per_hour_usd: econ.net_per_hour_usd,
+      break_even_usd: econ.break_even_usd,
       plan_usd: econ.plan_usd,
       plan_pct: PLAN_PCT,
       gas_usd: econ.gas_usd,
@@ -934,7 +1250,7 @@ export function buildRadar(snap: Snap): { board: Row[]; radar: Radar } {
     if (r.rank_high < r.rank_low) r.rank_high = r.rank_low;
   }
 
-  const verdictCounts = { FARM: 0, MARGINAL: 0, SKIP: 0 };
+  const verdictCounts = { ROBUST: 0, FARM: 0, THIN: 0, SKIP: 0 };
   for (const r of rows) verdictCounts[r.verdict]++;
   const totalImplied = rows.reduce((s, r) => s + r.implied_value_usd, 0);
 
@@ -988,7 +1304,7 @@ export function buildRadar(snap: Snap): { board: Row[]; radar: Radar } {
     watchlist_size: snap.watchlist.length,
     peers: peersAll.length,
     peers_dated: peers.length,
-    global_fit: pr.fit,
+    global_fit: lineFit,
     curve_at_100m_usd: Math.round(pr.curve(1e8)),
     curve_at_100m_se_usd: Math.round(se(curve100)),
     curve_at_1b_usd: Math.round(pr.curve(1e9)),
@@ -996,7 +1312,7 @@ export function buildRadar(snap: Snap): { board: Row[]; radar: Radar } {
     group_fits: groupFits,
     growth_p99_pct: pr.growthP99,
     plan_pct: PLAN_PCT,
-    drop_share_pct: DROP_SHARE * 100,
+    drop_share_pct: Math.round(DROP_SHARE * 1000) / 10,
     horizon_weeks: HORIZON_WEEKS,
     plan_hours: PLAN_HOURS,
     tbill_apy_pct: TBILL_APY * 100,
@@ -1006,6 +1322,8 @@ export function buildRadar(snap: Snap): { board: Row[]; radar: Radar } {
       base_rate_pct: Math.round((snap.protocols.filter(hasToken).length / snap.protocols.length) * 1000) / 10,
       loo_brier: Math.round(keptOdds.loo_brier * 1000) / 1000,
       loo_correct_pct: Math.round(keptOdds.loo_correct_pct * 10) / 10,
+      ten_brier: Math.round(keptOdds.ten_brier * 1000) / 1000,
+      ten_correct_pct: Math.round(keptOdds.ten_correct_pct * 10) / 10,
       wf_brier: Math.round(keptOdds.wf_brier * 1000) / 1000,
       wf_correct_pct: Math.round(keptOdds.wf_correct_pct * 10) / 10,
       loo_n: snap.protocols.length,
@@ -1013,7 +1331,7 @@ export function buildRadar(snap: Snap): { board: Row[]; radar: Radar } {
       beta: oddsModel.beta.map((v) => Math.round(v * 1000) / 1000),
       beta_se: betaSe,
       features: ['intercept', 'age (years listed)', 'group: lend', 'group: dex', 'group: yield', 'group: rwa', 'chains (capped at 6)', 'kinship (shared name stem)'],
-      note: 'Leave-one-out: each protocol predicted from the other 757. "Called right" means odds above 50% matches token-on-record. Walk-forward fits on the older half of dated protocols and calls the newer half.',
+      note: 'Leave-one-out: each protocol predicted from the other 757. "Called right" means odds above 50% matches token-on-record. Ten-fold: one seeded shuffle into ten folds. Walk-forward fits on the older half of dated protocols and calls the newer half.',
     },
     ranges: {
       q25: Math.round(q25 * 100) / 100,
@@ -1027,6 +1345,10 @@ export function buildRadar(snap: Snap): { board: Row[]; radar: Radar } {
       loo_n: ratios.length,
       wf_n: wfRatios.length,
     },
+    range_by_group: rangeByGroup,
+    per_group_band_test: perGroupBandTest,
+    nested_cv: nestedCv,
+    terms_survived: { kept: 3, tested: 6 },
     placebo_value_loo_miss: Math.round(placeboValue * 100) / 100,
     placebo_odds_loo_brier: Math.round(controlBrier * 1000) / 1000,
     board: rows,

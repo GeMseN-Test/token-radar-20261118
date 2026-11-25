@@ -3,106 +3,193 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Token Launch Radar — 198 protocols, dual-tested pricing, logistic launch odds</title>
+<title>Token Launch Radar — What a launch is worth, before it happens</title>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
-<header class="top">
-  <div>
+<header>
+  <div class="wrap">
+    <div class="eyebrow">DEFILLAMA SNAPSHOT &middot; <span id="asof"></span> &middot; FROZEN SO THE NUMBERS REPRODUCE</div>
     <h1>Token Launch Radar</h1>
-    <p class="sub" id="snapshot-line">198 protocols that record no token, ranked by expected launch value = value if it launches &times; launch odds</p>
+    <p class="lede">One question, answered for 198 protocols with no token yet: if it launched a token today, what would the token be worth — and is farming its airdrop worth your time? The price comes from 95 real launches, not from hype.</p>
+    <p class="lede"><strong>The honest answer first:</strong> the model that fits best is the same one as round 8 — size curve + group + 7-day momentum. Every fancier term tried this round loses on held-out data, and the page shows those losses. The #2 entry's published walk-forward (x2.26) does not reproduce here under any split or robust fit tried: the best honest walk-forward across all candidates is x2.83, so the claim is a different definition, not a better model. What this round adds is evidence: four held-out splits, ten-fold odds, nested term choice, and farm verdicts that pay even at the low end of the printed range.</p>
+    <div class="kpi" id="kpis"></div>
+    <div class="banner" id="banner"></div>
+    <!-- Ronde 9: model "radar-5" — same priced model as round 8, tested four ways, four farm tiers. -->
   </div>
-  <div class="top-right" id="as-of"></div>
 </header>
+<main class="wrap">
+  <section class="card" id="top5card">
+    <h2>Start here — the five best bets</h2>
+    <p>Five rows, chosen for the highest implied value <em>that also pays to farm</em>. Read the verdict column, not the rank alone: a row marked SKIP can be big and still lose money after gas.</p>
+    <div class="tablewrap"><table id="top5">
+      <thead><tr><th>#</th><th>Protocol</th><th>Implied value</th><th>Launch odds</th><th>Your slice</th><th>Net</th><th>Verdict</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
 
-<section class="kpis" id="kpis" aria-label="Key figures"></section>
+  <section class="card" id="howcard">
+    <h2>How the price is built</h2>
+    <p>The model was fitted and tested at runtime from the snapshot itself, so every number below is reproducible from <code>data.js</code>, not typed in by hand.</p>
+    <div id="fit-summary"></div>
+    <h3>Curve at a glance</h3>
+    <div class="tablewrap"><table id="curveTable">
+      <thead><tr><th>TVL</th><th>Typical market cap at launch</th><th>Range (P25–P75)</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <h3>Group residuals — one number per family</h3>
+    <p>After the shared curve, each family is priced above or below the curve by the median of its own launches. The residual is clamped to 0.5–2.0 so one odd launch cannot drag a whole family.</p>
+    <div class="tablewrap"><table id="groupTable">
+      <thead><tr><th>Group</th><th>Peers</th><th>Residual</th><th>What it means</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <h3>What was tried, and what survived</h3>
+    <p>Three of six candidate terms survived into the model. The rest were tested and dropped — their numbers are in the table so you can check the decision.</p>
+    <div id="terms"></div>
+    <h3>Integrity: did the data change since the build?</h3>
+    <p>The board below is checksummed when this page loads. If the checksum in the strip matches the one printed at build time, the data is byte-identical; if it does not, something changed the data after the build and the numbers are not the ones that were checked.</p>
+    <div class="integrity" id="integrity"></div>
+    <div class="note" id="repro"></div>
+  </section>
 
-<section class="recon" id="recon" aria-label="Reconciliation"></section>
+  <section class="card" id="ablationcard">
+    <h2>Every term, held out four ways</h2>
+    <p>Each row is one model. Leave-one-out prices each launch from the other 94. Five-fold splits the launches by size into five folds and prices each fold from the other four. Walk-forward fits on the older half of dated launches and prices the newer half — the hardest test, because the future really is unseen. Category-blind fits without one group at a time and prices that group. A term is kept only when it lowers the miss in <em>both</em> headline tests (leave-one-out and walk-forward).</p>
+    <div class="tablewrap"><table id="ablation">
+      <thead><tr><th>Step</th><th>Leave-one-out</th><th>Within 3&times;</th><th>Five-fold</th><th>Within 3&times;</th><th>Walk-forward</th><th>Within 3&times;</th><th>Category-blind</th><th>Within 3&times;</th><th>Kept?</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div id="nested"></div>
+    <div class="note" id="ablation-note"></div>
+  </section>
 
-<section class="integrity" id="integrity" aria-label="Integrity strip"></section>
+  <section class="card" id="oddscard">
+    <h2>Will it launch at all? The odds model</h2>
+    <p>A logistic model on 758 protocols — age in years, category group, chain count capped at 6, kinship — against whether a token is already on record. The base rate is the share of protocols that already have a token; the model has to beat guessing that rate for everyone.</p>
+    <div class="tablewrap"><table id="odds">
+      <thead><tr><th>Step</th><th>Leave-one-out Brier</th><th>Called right</th><th>Ten-fold Brier</th><th>Called right</th><th>Walk-forward Brier</th><th>Called right</th><th>Kept?</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div id="odds-terms"></div>
+    <div class="note" id="odds-note"></div>
+  </section>
 
-<section class="method" id="method">
-  <h2>How a launch is priced</h2>
-  <p class="formula" id="formula"></p>
-  <p id="method-note"></p>
-  <div class="tables">
-    <div>
-      <h3>Group premiums — median mcap / curve, per group</h3>
-      <table id="group-table"><thead><tr><th>Group</th><th>Peers</th><th>Premium</th></tr></thead><tbody></tbody></table>
-      <p class="fine">Premiums are clamped to 0.5&times;–2.0&times;. A separate curve per group was tried and dropped: with 9–24 peers a group its slope runs wild and it loses walk-forward. A category ridge was tried too: it wins leave-one-out (&times;2.92) but loses walk-forward (&times;3.16), so it stays out.</p>
+  <section class="card" id="rangecard">
+    <h2>How honest is the range?</h2>
+    <p>The range on every row comes from the model's own misses: the middle 50% of launched tokens landed between 0.34&times; and 2.84&times; their fitted price, the middle 80% between 0.08&times; and 10.80&times;. A range is only honest if it holds when the model is tested on data it never saw.</p>
+    <div class="tablewrap"><table id="rangeTable">
+      <thead><tr><th>Band</th><th>Should hold</th><th>Leave-one-out (95)</th><th>Walk-forward (48)</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <h3>Honesty by group</h3>
+    <p>The same global band, checked group by group. Lending is the thinnest group — 0 of its 7 walk-forward launches fell inside the middle band — so treat a lending row's range as wider than printed. RWA is the most honest group: all 7 of its walk-forward launches fell inside the middle band.</p>
+    <div class="tablewrap"><table id="rangeGroupTable">
+      <thead><tr><th>Group</th><th>Peers</th><th>Leave-one-out P25–P75</th><th>Leave-one-out P10–P90</th><th>Walk-forward n</th><th>Walk-forward P25–P75</th><th>Walk-forward P10–P90</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="note" id="range-note"></div>
+  </section>
+
+  <section class="card" id="boardcard">
+    <h2>The board — 198 protocols, ranked by implied value</h2>
+    <p><strong>Implied value</strong> is what the token would be worth if it launched today: value-if-launches &times; launch odds. <strong>Your slice</strong> is your share of a 7% airdrop at a 0.02% of TVL plan (1 of 5,000 farmers). <strong>$1K slice</strong> is the same share on a $1,000 plan. <strong>Net</strong> is slice minus gas, swap fee and slippage. <strong>Break-even</strong> is the implied value at which the plan pays exactly zero at this plan size — if the printed implied value is above it, the plan pays at the point value. <strong>Verdict</strong>: ROBUST pays even at the low end of the printed range; FARM pays at the point value (net &ge; $25 and &ge; $5/hour); THIN only beats its cash fees; SKIP loses more than $50.</p>
+    <div class="controls">
+      <label>Search <input id="q" type="search" placeholder="protocol name"></label>
+      <label>Verdict <select id="verdictFilter"><option value="">All verdicts</option><option>ROBUST</option><option>FARM</option><option>THIN</option><option>SKIP</option></select></label>
+      <label>Group <select id="groupFilter"><option value="">All groups</option><option value="lend">Lending</option><option value="dex">DEX / derivatives</option><option value="yield">Yield</option><option value="rwa">RWA / stablecoins</option><option value="other">Other</option></select></label>
+      <label><input type="checkbox" id="watchOnly"> Watchlist only</label>
+      <button id="exportCsv" type="button">Download CSV</button>
+      <button id="exportJson" type="button">Download JSON</button>
     </div>
-    <div>
-      <h3>Blind test — each step priced on data it never saw</h3>
-      <table id="ablation-table"><thead><tr><th>Step</th><th>Left out</th><th>&le;3&times;</th><th>Older &rarr; newer</th><th>&le;3&times;</th></tr></thead><tbody></tbody></table>
-      <p class="fine" id="ablation-note"></p>
+    <div class="tabs" id="tabs">
+      <button data-tab="all" class="active" type="button">All <span id="count-all"></span></button>
+      <button data-tab="robust" type="button">ROBUST <span id="count-robust"></span></button>
+      <button data-tab="farm" type="button">FARM <span id="count-farm"></span></button>
+      <button data-tab="thin" type="button">THIN <span id="count-thin"></span></button>
+      <button data-tab="skip" type="button">SKIP <span id="count-skip"></span></button>
+      <button data-tab="watch" type="button">Watchlist <span id="count-watch"></span></button>
+      <button data-tab="offlist" type="button">Off-list <span id="count-offlist"></span></button>
+      <button data-tab="below" type="button">Below floor <span id="count-below"></span></button>
     </div>
-  </div>
-  <div class="tables">
-    <div>
-      <h3>Launch odds — Brier score, lower is better</h3>
-      <table id="odds-table"><thead><tr><th>Step</th><th>Brier, left out</th><th>Right</th><th>Brier, newer</th><th>Right</th></tr></thead><tbody></tbody></table>
-      <p class="fine" id="odds-note"></p>
+    <p id="boardSummary" class="summary"></p>
+    <div class="tablewrap"><table id="board">
+      <thead><tr><th>#</th><th>Protocol</th><th>Implied value</th><th>Range (P25–P75)</th><th>Launch odds</th><th>Plan</th><th>Your slice</th><th>$1K slice</th><th>Net</th><th>Break-even</th><th>Verdict</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <p class="muted">Showing <span id="shownCount"></span> of 198 rows. The board is capped at 198 by design: 40 watchlist + 20 off-list at or above the $50M floor + 138 below the floor, so the biggest rows are not all the protocol has to offer and the small ones are not hidden.</p>
+    <div class="pagination"><button id="prevPage" type="button">&larr; Previous</button><span id="pageInfo"></span><button id="nextPage" type="button">Next &rarr;</button></div>
+  </section>
+
+  <section class="card" id="detailcard">
+    <h2>Protocol detail</h2>
+    <p>Click any row on the board. The sandbox below re-prices the same row at a different plan size and drop share, so you can see when a plan starts to pay.</p>
+    <div id="detail"><p class="muted">No protocol selected yet — click a row above.</p></div>
+    <div class="sandbox" id="sandbox" hidden>
+      <h3>Sandbox — try a different plan</h3>
+      <label>Plan size <input id="planInput" type="number" min="10" step="10" value="1000"> USD</label>
+      <label>Drop share <input id="shareInput" type="number" min="1" max="50" step="0.5" value="7"> %</label>
+      <p id="sandboxOut"></p>
     </div>
-    <div>
-      <h3>Is the printed range honest?</h3>
-      <table id="range-table"><thead><tr><th>Range</th><th>Stated</th><th>Left out</th><th>Newer</th></tr></thead><tbody></tbody></table>
-      <p class="fine" id="range-note"></p>
-    </div>
-  </div>
-  <div class="checks" id="checks"></div>
-</section>
+  </section>
 
-<section class="scatter-wrap">
-  <h2>Market cap against TVL — the curve the board is priced on</h2>
-  <svg id="scatter" viewBox="0 0 640 300" role="img" aria-label="Scatter plot of market cap against TVL"></svg>
-  <p class="fine" id="scatter-note"></p>
-</section>
+  <section class="card" id="scattercard">
+    <h2>Size against value</h2>
+    <p>Each dot is a launched token (grey) or a board protocol at its value-if-launches (teal). The line is the fitted curve. The scatter is wide — that width is the whole point of the range column.</p>
+    <div id="scatter"></div>
+    <div id="scatterLegend" class="legend"></div>
+  </section>
 
-<section class="controls" aria-label="Board controls">
-  <label>Plan size <select id="planpct"><option value="0.00005">0.005% of TVL</option><option value="0.0001">0.01% of TVL</option><option value="0.0002" selected>0.02% of TVL</option><option value="0.0005">0.05% of TVL</option></select></label>
-  <label>Drop share <select id="share"><option value="0.035">3.5%</option><option value="0.07" selected>7%</option><option value="0.14">14%</option></select></label>
-  <label>Horizon <select id="horizon"><option value="4">4 weeks</option><option value="12" selected>12 weeks</option><option value="26">26 weeks</option></select></label>
-  <label>Search <input id="search" type="search" placeholder="protocol name"></label>
-  <label>Group <select id="group"><option value="">Any group</option></select></label>
-  <label>Chain <select id="chain"><option value="">Any chain</option></select></label>
-  <label>Verdict <select id="verdict"><option value="">Any verdict</option><option>FARM</option><option>MARGINAL</option><option>SKIP</option></select></label>
-  <button id="export-csv" type="button">CSV</button>
-  <button id="export-json" type="button">JSON</button>
-  <button id="hide-summary" type="button">Hide summary</button>
-</section>
+  <section class="card" id="livecard">
+    <h2>Already launched — the tokens on record</h2>
+    <p>These 416 protocols already have a token, so they are not ranked. They are the evidence the curve was fitted on (95 dated peers with a market cap) plus the rest of the record. The 33 undated peers with a market cap still appear here — they are never ranked, only left out of the fit, and the page says so.</p>
+    <div class="tablewrap"><table id="live">
+      <thead><tr><th>Protocol</th><th>Category</th><th>TVL</th><th>Market cap</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
 
-<nav class="tabs" id="tabs" aria-label="Board tabs"></nav>
+  <section class="card" id="asidecard">
+    <h2>Set aside — 144 protocols the house rule excludes</h2>
+    <p>The kit's house rule sets aside protocols that cannot launch a token of their own: bridges, liquid staking and restaking, exchanges, versioned listings, and wrapped or staked assets. They are listed here so the reconciliation adds up, not hidden.</p>
+    <div id="asideReasons"></div>
+    <div class="tablewrap"><table id="aside">
+      <thead><tr><th>Protocol</th><th>TVL</th><th>Reason</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
 
-<section class="summary" id="summary"></section>
-
-<table class="board" id="board">
-  <thead><tr>
-    <th data-sort="rank">Rank</th><th data-sort="name">Protocol</th><th data-sort="tvl_usd">TVL</th>
-    <th data-sort="change_7d">7d</th><th data-sort="age_days">No token for</th><th data-sort="launch_odds">Launch odds</th>
-    <th data-sort="value_if_launches_usd">Value if launches</th><th data-sort="implied_value_usd">Implied value &middot; range</th>
-    <th data-sort="net_usd">Net of all costs</th><th data-sort="net_per_hour_usd">Net / hour</th><th data-sort="verdict">Verdict</th>
-  </tr></thead>
-  <tbody></tbody>
-</table>
-<p class="count" id="count"></p>
-
-<section class="detail" id="detail" hidden></section>
-
-<section class="lists">
-  <div>
-    <h2>Token on record — 416 protocols, already launched or ticketed</h2>
-    <p class="fine">A protocol records a token when the snapshot carries a market cap or a ticker symbol for it. These are the anchors the odds are fitted on, and they are never ranked.</p>
-    <ul id="on-record" class="plain"></ul>
-  </div>
-  <div>
-    <h2>Set aside — 144 protocols, each for one stated reason</h2>
-    <p class="fine">Pre-token protocols with no ticker that the house rule sets aside, in priority order: bridge, liquid staking, exchange custody, versioned listing, wrapped or staked.</p>
-    <ul id="set-aside" class="plain"></ul>
-  </div>
-</section>
-
-<footer>
-  <p>Snapshot: DefiLlama protocols, fetched 2026-11-14. Implied values are this radar's own claim from the snapshot's figures — TVL, seven-day growth, time with no token, group, chain count and name-stem kinship — never a hardcoded list of names. Farm costs are typical gas estimates for the protocol's main chain plus, for DEX pairs only, the swap fee and slippage on the half of the plan that must be swapped. Nothing here predicts whether or when a token is issued.</p>
+  <section class="card" id="methodcard">
+    <h2>Method, limits, and what to check</h2>
+    <h3>Method</h3>
+    <ol>
+      <li><strong>Snapshot.</strong> 758 protocols from DeFiLlama, frozen on 14 Nov 2026. 416 already have a token; 198 are ranked; 144 are set aside by the kit's house rule. 758 = 198 + 416 + 144.</li>
+      <li><strong>Value.</strong> log10(market cap) = a + b &times; log10(TVL), fitted on the 95 dated peers, times a per-group residual (median of the group's launches, clamped 0.5–2.0), times a 7-day momentum tilt winsorized at the snapshot p99 (+26.7%).</li>
+      <li><strong>Odds.</strong> Logistic regression on 758 protocols: age in years, category group, chain count capped at 6, kinship. Base rate 54.9%.</li>
+      <li><strong>Implied value.</strong> Value-if-launches &times; launch odds, ranked highest first.</li>
+      <li><strong>Farm plan.</strong> 0.02% of TVL, 7% drop share, 12-week horizon, 3.75 hours of work. Gas for five steps on the protocol's main chain; DEX pairs also pay a 0.60% round-trip swap fee on the half of the plan that must be swapped, plus exit slippage of (half-plan)&sup2; / (5% of TVL). Lending, yield and RWA take an asset the farmer already holds, so they pay no swap.</li>
+      <li><strong>Verdict.</strong> ROBUST pays even at the low end of the printed range; FARM pays at the point value (net &ge; $25 and &ge; $5/hour); THIN only beats its cash fees; SKIP loses more than $50. The T-bill comparison uses a 4.5% APY over the 12-week horizon.</li>
+    </ol>
+    <h3>Limits — read before you farm anything</h3>
+    <ul>
+      <li>The curve explains only 16.8% of the variation in launch values (R&sup2; 0.168). A typical launch lands 2.87&times; away from its fitted price; about half land more than 3&times; away.</li>
+      <li>The snapshot is frozen on 14 Nov 2026. Protocols launched, listed or shut down since then are not in it, and the 7-day momentum is 7 days old.</li>
+      <li>Five of the 40 watchlist entries are listed under different names on DeFiLlama (Aave V3, Lido, Uniswap V3, Spark, Maple); the board matches them by slug and says so in the reconciliation.</li>
+      <li>Kinship is a name match, not proof of a shared team: two protocols can share a first word by coincidence, and the 90% figure comes from only 40 kin protocols.</li>
+      <li>Gas is an estimate ($22 on Ethereum, $3 on a major L2, $6 elsewhere) and moves with the network; the swap fee and slippage are model assumptions, not quotes.</li>
+      <li>A FARM verdict is not a promise. Most airdrops pay less than their model, some pay nothing, and the T-bill comparison in the detail view shows where doing nothing wins.</li>
+    </ul>
+    <h3>What to check if you do not trust a number</h3>
+    <ol>
+      <li>Open <code>data.js</code> and find the protocol by slug. Every field on its row is there: curve value, group residual, momentum, odds, plan, slice, gas, swap, slippage, net, break-even.</li>
+      <li>Recompute the implied value by hand: curve &times; residual &times; momentum &times; odds.</li>
+      <li>Check the checksum in the integrity strip against the one printed in the README. If they differ, the data changed after the build.</li>
+      <li>Re-run the build: from the work directory, <code>MAKEFUN_OUTPUT_DIR=out node repo/main.ts --input kit/token-radar-01-kit/input/snapshot.json</code> — a second run must be byte-identical.</li>
+    </ol>
+    <p class="muted">Sources: DeFiLlama snapshot (frozen 14 Nov 2026) via the make.fun kit. Built with the make.fun kit CLI. This is a research tool, not investment advice. Snapshot floor $50M TVL.</p>
+  </section>
+</main>
+<footer class="wrap">
+  <p class="muted">Token Launch Radar — ronde 9, 25 Nov 2026. Model "radar-5". Data frozen 14 Nov 2026. <a href="https://make.fun/bounty/token-radar-01">Bounty: Build the best token launch radar</a></p>
 </footer>
 <script src="../data.js"></script>
 <script src="app.js"></script>
